@@ -91,10 +91,10 @@ class Plane : public Object
 {
 protected:
   Vector	 PN;
-  float 	 D;
+  Vector 	 A;
 
 public:
-		 Plane		(Vector& PNc, float Dc);
+		 Plane		(Vector& PNc, Vector A);
 		 Plane		(Vector& P0, Vector& P1, Vector& P2);
 
 		 bool intercepts( Ray& r, float& dist );

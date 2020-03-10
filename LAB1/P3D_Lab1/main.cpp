@@ -66,7 +66,7 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 	Object* obj;
 	Object* min_obj;
 
-	float t = FLT_MAX; //FIXME: here it should be a pointer, no?
+	float t = FLT_MAX; 
 	float min_t = t;
 
 	//iterate through all objects in scene to check for interception
@@ -79,8 +79,9 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			min_t   = t;
 		}
 	}
+
 	//no intersection -> return background
-	if (t == FLT_MAX) {
+	if (min_t == FLT_MAX) {
 		return scene->GetBackgroundColor();
 	}
 	//intersection    -> get color

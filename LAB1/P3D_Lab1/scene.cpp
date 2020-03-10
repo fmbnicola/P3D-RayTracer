@@ -38,57 +38,65 @@ Vector Triangle::getNormal(Vector point)
 // Ray/Triangle intersection test using Tomas Moller-Ben Trumbore algorithm.
 //
 
-bool Triangle::intercepts(Ray& r, float& t ) {
+bool Triangle::intercepts(Ray& r, float& t) {
 
 	return (false);
 }
 
-Plane::Plane(Vector& a_PN, float a_D)
-	: PN(a_PN), D(a_D)
+Plane::Plane(Vector& a_PN, Vector a_A)
+	: PN(a_PN), A(a_A)
 {}
 
 Plane::Plane(Vector& P0, Vector& P1, Vector& P2)
 {
-   float l;
+	//Calculate the normal plane: counter-clockwise vectorial product.
 
-   //Calculate the normal plane: counter-clockwise vectorial product.
-   PN = Vector(0, 0, 0);		
+	Vector a = P0 - P1;
+	Vector b = P2 - P1;
 
-   if ((l=PN.length()) == 0.0)
-   {
-     cerr << "DEGENERATED PLANE!\n";
-   }
-   else
-   {
-     PN.normalize();
-	 //Calculate D
-     D  = 0.0f;
-   }
+	PN = a % b;
+	PN.normalize();
+
+	//Calculate D FIXME: We dont know what d is
+	A = P0;
 }
 
 //
 // Ray/Plane intersection test.
 //
 
-bool Plane::intercepts( Ray& r, float& t )
+bool Plane::intercepts(Ray& r, float& t)
 {
-  
-   return (false);
+	float numer = (r.origin - A) * PN;
+	float div = PN * r.direction;
+
+	t = - (numer / div);
+
+	return t > 0;
 }
 
-Vector Plane::getNormal(Vector point) 
+Vector Plane::getNormal(Vector point)
 {
-  return PN;
+	return PN;
 }
 
 
-bool Sphere::intercepts(Ray& r, float& t )
+bool Sphere::intercepts(Ray& r, float& t)
 {
-  return (false);
+	Vector Rd = r.direction;
+
+	Vector co = (center - r.origin);
+
+	float doc2 = co.sqrdLength();
+
+	float b = co*Rd;
+
+
+	return (false);
 }
 
 
-Vector Sphere::getNormal( Vector point )
+Vector Sphere::getNormal(Vector point)
 {
 	Vector normal = point - center;
 	return (normal.normalize());
@@ -96,7 +104,7 @@ Vector Sphere::getNormal( Vector point )
 
 AABB Sphere::GetBoundingBox() {
 	Vector a_min;
-	Vector a_max ;
+	Vector a_max;
 	return(AABB(a_min, a_max));
 }
 
@@ -112,7 +120,7 @@ AABB aaBox::GetBoundingBox() {
 
 bool aaBox::intercepts(Ray& ray, float& t)
 {
-		return (false);
+	return (false);
 }
 
 Vector aaBox::getNormal(Vector point)
@@ -172,19 +180,19 @@ Light* Scene::getLight(unsigned int index)
 	return NULL;
 }
 
-void Scene::LoadSkybox(const char *sky_dir)
+void Scene::LoadSkybox(const char* sky_dir)
 {
-	char *filenames[6];
+	char* filenames[6];
 	char buffer[100];
-	const char *maps[] = { "/right.jpg", "/left.jpg", "/top.jpg", "/bottom.jpg", "/front.jpg", "/back.jpg" };
+	const char* maps[] = { "/right.jpg", "/left.jpg", "/top.jpg", "/bottom.jpg", "/front.jpg", "/back.jpg" };
 
 	for (int i = 0; i < 6; i++) {
 		strcpy_s(buffer, sizeof(buffer), sky_dir);
 		strcat_s(buffer, sizeof(buffer), maps[i]);
-		filenames[i] = (char *)malloc(sizeof(buffer));
+		filenames[i] = (char*)malloc(sizeof(buffer));
 		strcpy_s(filenames[i], sizeof(buffer), buffer);
 	}
-	
+
 	ILuint ImageName;
 
 	ilEnable(IL_ORIGIN_SET);
@@ -211,8 +219,8 @@ void Scene::LoadSkybox(const char *sky_dir)
 		ilConvertImage(format, IL_UNSIGNED_BYTE);
 
 		int size = ilGetInteger(IL_IMAGE_SIZE_OF_DATA);
-		skybox_img[i].img = (ILubyte *)malloc(size);
-		ILubyte *bytes = ilGetData();
+		skybox_img[i].img = (ILubyte*)malloc(size);
+		ILubyte* bytes = ilGetData();
 		memcpy(skybox_img[i].img, bytes, size);
 		skybox_img[i].resX = ilGetInteger(IL_IMAGE_WIDTH);
 		skybox_img[i].resY = ilGetInteger(IL_IMAGE_HEIGHT);
@@ -295,9 +303,9 @@ Color Scene::GetSkyboxColor(Ray& r) {
 	yp = int((height - 1) * t);
 	yp < 0 ? 0 : (yp > (height - 1) ? height - 1 : yp);
 
-	float red = u8tofloat(skybox_img[img_side].img[(yp*width + xp) * bytesperpixel]);
-	float green = u8tofloat(skybox_img[img_side].img[(yp*width + xp) * bytesperpixel + 1]);
-	float blue = u8tofloat(skybox_img[img_side].img[(yp*width + xp) * bytesperpixel + 2]);
+	float red = u8tofloat(skybox_img[img_side].img[(yp * width + xp) * bytesperpixel]);
+	float green = u8tofloat(skybox_img[img_side].img[(yp * width + xp) * bytesperpixel + 1]);
+	float blue = u8tofloat(skybox_img[img_side].img[(yp * width + xp) * bytesperpixel + 2]);
 
 	return(Color(red, green, blue));
 }
@@ -308,167 +316,167 @@ Color Scene::GetSkyboxColor(Ray& r) {
 ////////////////////////////////////////////////////////////////////////////////
 // P3F file parsing methods.
 //
-void next_token(ifstream& file, char *token, const char *name)
+void next_token(ifstream& file, char* token, const char* name)
 {
-  file >> token;
-  if (strcmp(token, name))
-    cerr << "'" << name << "' expected.\n";
+	file >> token;
+	if (strcmp(token, name))
+		cerr << "'" << name << "' expected.\n";
 }
 
-bool Scene::load_p3f(const char *name)
+bool Scene::load_p3f(const char* name)
 {
-  const	int	lineSize = 1024;
-  string	cmd;
-  char		token	[256];
-  ifstream	file(name, ios::in);
-  Material *	material;
+	const	int	lineSize = 1024;
+	string	cmd;
+	char		token[256];
+	ifstream	file(name, ios::in);
+	Material* material;
 
-  material = NULL;
+	material = NULL;
 
-  if (file >> cmd)
-  {
-    while (true)
-    {
-      
-	  if (cmd == "f")   //Material
-      {
-	    double Kd, Ks, Shine, T, ior;
-	    Color cd, cs;
+	if (file >> cmd)
+	{
+		while (true)
+		{
 
-	    file >> cd >> Kd >> cs >> Ks >> Shine >> T >> ior;
+			if (cmd == "f")   //Material
+			{
+				double Kd, Ks, Shine, T, ior;
+				Color cd, cs;
 
-	    material = new Material(cd, Kd, cs, Ks, Shine, T, ior);
-      }
+				file >> cd >> Kd >> cs >> Ks >> Shine >> T >> ior;
 
-      else if (cmd == "s")    //Sphere
-      {
-	     Vector center;
-    	 float radius;
-         Sphere* sphere;
+				material = new Material(cd, Kd, cs, Ks, Shine, T, ior);
+			}
 
-	    file >> center >> radius;
-        sphere = new Sphere(center,radius);
-	    if (material) sphere->SetMaterial(material);
-        this->addObject( (Object*) sphere);
-      }
+			else if (cmd == "s")    //Sphere
+			{
+				Vector center;
+				float radius;
+				Sphere* sphere;
 
-	  else if (cmd == "box")    //axis aligned box
-	  {
-		  Vector minpoint, maxpoint;
-		  aaBox	*box;
+				file >> center >> radius;
+				sphere = new Sphere(center, radius);
+				if (material) sphere->SetMaterial(material);
+				this->addObject((Object*)sphere);
+			}
 
-		  file >> minpoint >> maxpoint;
-		  box = new aaBox(minpoint, maxpoint);
-		  if (material) box->SetMaterial(material);
-		  this->addObject((Object*)box);
-	  }
-	  else if (cmd == "p")  // Polygon: just accepts triangles for now
-      {
-		  Vector P0, P1, P2;
-		  Triangle* triangle;
-		  unsigned total_vertices;
-		  
-		  file >> total_vertices;
-		  if (total_vertices == 3)
-		  {
-			  file >> P0 >> P1 >> P2;
-			  triangle = new Triangle(P0, P1, P2);
-			  if (material) triangle->SetMaterial(material);
-			  this->addObject( (Object*) triangle);
-		  }
-		  else
-		  {
-			  cerr << "Unsupported number of vertices.\n";
-			  break;
-		  }
-      }
-      
-	  else if (cmd == "pl")  // General Plane
-	  {
-          Vector P0, P1, P2;
-		  Plane* plane;
+			else if (cmd == "box")    //axis aligned box
+			{
+				Vector minpoint, maxpoint;
+				aaBox* box;
 
-          file >> P0 >> P1 >> P2;
-          plane = new Plane(P0, P1, P2);
-	      if (material) plane->SetMaterial(material);
-          this->addObject( (Object*) plane);
-	  }
+				file >> minpoint >> maxpoint;
+				box = new aaBox(minpoint, maxpoint);
+				if (material) box->SetMaterial(material);
+				this->addObject((Object*)box);
+			}
+			else if (cmd == "p")  // Polygon: just accepts triangles for now
+			{
+				Vector P0, P1, P2;
+				Triangle* triangle;
+				unsigned total_vertices;
 
-      else if (cmd == "l")  // Need to check light color since by default is white
-      {
-	    Vector pos;
-        Color color;
+				file >> total_vertices;
+				if (total_vertices == 3)
+				{
+					file >> P0 >> P1 >> P2;
+					triangle = new Triangle(P0, P1, P2);
+					if (material) triangle->SetMaterial(material);
+					this->addObject((Object*)triangle);
+				}
+				else
+				{
+					cerr << "Unsupported number of vertices.\n";
+					break;
+				}
+			}
 
-	    file >> pos >> color;
-	    
-	      this->addLight(new Light(pos, color));
-	    
-      }
-      else if (cmd == "v")
-      {
-	    Vector up, from, at;
-	    float fov, hither;
-	    int xres, yres;
-        Camera* camera;
-		float focal_ratio; //ratio beteween the focal distance and the viewplane distance
-		float aperture_ratio; // number of times to be multiplied by the size of a pixel
+			else if (cmd == "pl")  // General Plane
+			{
+				Vector P0, P1, P2;
+				Plane* plane;
 
-	    next_token (file, token, "from");
-	    file >> from;
+				file >> P0 >> P1 >> P2;
+				plane = new Plane(P0, P1, P2);
+				if (material) plane->SetMaterial(material);
+				this->addObject((Object*)plane);
+			}
 
-	    next_token (file, token, "at");
-	    file >> at;
+			else if (cmd == "l")  // Need to check light color since by default is white
+			{
+				Vector pos;
+				Color color;
 
-	    next_token (file, token, "up");
-	    file >> up;
+				file >> pos >> color;
 
-	    next_token (file, token, "angle");
-	    file >> fov;
+				this->addLight(new Light(pos, color));
 
-	    next_token (file, token, "hither");
-	    file >> hither;
+			}
+			else if (cmd == "v")
+			{
+				Vector up, from, at;
+				float fov, hither;
+				int xres, yres;
+				Camera* camera;
+				float focal_ratio; //ratio beteween the focal distance and the viewplane distance
+				float aperture_ratio; // number of times to be multiplied by the size of a pixel
 
-	    next_token (file, token, "resolution");
-	    file >> xres >> yres;
+				next_token(file, token, "from");
+				file >> from;
 
-		next_token(file, token, "aperture");
-		file >> aperture_ratio;
+				next_token(file, token, "at");
+				file >> at;
 
-		next_token(file, token, "focal");
-		file >> focal_ratio;
-	    // Create Camera
-		camera = new Camera( from, at, up, fov, hither, 100.0*hither, xres, yres, aperture_ratio, focal_ratio);
-        this->SetCamera(camera);
-      }
+				next_token(file, token, "up");
+				file >> up;
 
-      else if (cmd == "bclr")   //Background color
-      {
-		Color bgcolor;
-		file >> bgcolor;
-		this->SetBackgroundColor(bgcolor);
-	  }
-	
-	  else if (cmd == "env")
-	  {
-		  file >> token;
-		  
-		  this->LoadSkybox(token);
-		  this->SetSkyBoxFlg(true);
-	  }
-      else if (cmd[0] == '#')
-      {
-	    file.ignore (lineSize, '\n');
-      }
-      else
-      {
-	    cerr << "unknown command '" << cmd << "'.\n";
-	    break;
-      }
-      if (!(file >> cmd))
-        break;
-    }
-  }
+				next_token(file, token, "angle");
+				file >> fov;
 
-  file.close();
-  return true;
+				next_token(file, token, "hither");
+				file >> hither;
+
+				next_token(file, token, "resolution");
+				file >> xres >> yres;
+
+				next_token(file, token, "aperture");
+				file >> aperture_ratio;
+
+				next_token(file, token, "focal");
+				file >> focal_ratio;
+				// Create Camera
+				camera = new Camera(from, at, up, fov, hither, 100.0 * hither, xres, yres, aperture_ratio, focal_ratio);
+				this->SetCamera(camera);
+			}
+
+			else if (cmd == "bclr")   //Background color
+			{
+				Color bgcolor;
+				file >> bgcolor;
+				this->SetBackgroundColor(bgcolor);
+			}
+
+			else if (cmd == "env")
+			{
+				file >> token;
+
+				this->LoadSkybox(token);
+				this->SetSkyBoxFlg(true);
+			}
+			else if (cmd[0] == '#')
+			{
+				file.ignore(lineSize, '\n');
+			}
+			else
+			{
+				cerr << "unknown command '" << cmd << "'.\n";
+				break;
+			}
+			if (!(file >> cmd))
+				break;
+		}
+	}
+
+	file.close();
+	return true;
 };

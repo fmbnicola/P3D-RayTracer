@@ -12,6 +12,13 @@ float Vector::length()
 	return sqrt( x * x + y * y + z * z );
 }
 
+
+float Vector::sqrdLength()
+{
+	return (x * x + y * y + z * z);
+}
+
+
 // --------------------------------------------------------------------- copy constructor
 Vector::Vector(const Vector& v)
 {

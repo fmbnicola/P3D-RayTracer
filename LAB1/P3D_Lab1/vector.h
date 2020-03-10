@@ -14,6 +14,7 @@ public:
 	Vector(const Vector& v);
 
 	float length();
+	float sqrdLength();
 	Vector&	normalize();
 	Vector operator=(const Vector& v);
 	Vector operator+( const Vector& v );
