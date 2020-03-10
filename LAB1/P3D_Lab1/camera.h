@@ -65,10 +65,17 @@ public:
 	{
 		Vector ray_dir;
 		
+		Vector ps;
+		ps.x = w * (pixel_sample.x / res_x - 0.5f);
+		ps.y = h * (pixel_sample.y / res_y - 0.5f);
+		ps.z = -plane_dist;
+
 		//calculate ray direction
-		ray_dir = u * - plane_dist                                 +  //FIXME if needed take out -
-			      v * (h * ((pixel_sample.y + 0.5) / res_y - 0.5)) + 
-				  n * (w * ((pixel_sample.x + 0.5) / res_x - 0.5)) ;
+		Vector vX = u * ps.x;
+		Vector vY = v * ps.y;
+		Vector vZ = n * ps.z;
+
+		ray_dir = (vX + vY + vZ).normalize();
 
 		return Ray(eye, ray_dir);  
 	}

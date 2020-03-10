@@ -51,13 +51,12 @@ Plane::Plane(Vector& P0, Vector& P1, Vector& P2)
 {
 	//Calculate the normal plane: counter-clockwise vectorial product.
 
-	Vector a = P0 - P1;
-	Vector b = P2 - P1;
+	Vector a = P2 - P1;
+	Vector b = P0 - P1;
 
 	PN = a % b;
 	PN.normalize();
 
-	//Calculate D FIXME: We dont know what d is
 	A = P0;
 }
 
@@ -68,11 +67,15 @@ Plane::Plane(Vector& P0, Vector& P1, Vector& P2)
 bool Plane::intercepts(Ray& r, float& t)
 {
 	float numer = (r.origin - A) * PN;
-	float div = PN * r.direction;
+	float divid = PN * r.direction;
 
-	t = - (numer / div);
+	if (fabs(divid) < 0.0001) {
+		return false;
+	}
 
-	return t > 0;
+	t = - (numer / divid);
+
+	return (t > 0);
 }
 
 Vector Plane::getNormal(Vector point)

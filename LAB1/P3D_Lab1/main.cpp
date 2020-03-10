@@ -63,25 +63,25 @@ int WindowHandle = 0;
 
 Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of medium 1 where the ray is travelling
 {
-	Object* obj;
-	Object* min_obj;
+	Object* obj     = NULL;
+	Object* min_obj = NULL;
 
-	float t = FLT_MAX; 
-	float min_t = t;
+	float t     = FLT_MAX; 
+	float min_t = FLT_MAX;
 
 	//iterate through all objects in scene to check for interception
 	for (int i = 0; i < scene->getNumObjects(); i++) {
 
 		obj = scene->getObject(i);
 		
-		if (obj->intercepts(ray, t) && t < min_t) {
+		if (obj->intercepts(ray, t) && (t < min_t)) {
 			min_obj = obj;
 			min_t   = t;
 		}
 	}
 
 	//no intersection -> return background
-	if (min_t == FLT_MAX) {
+	if (min_obj == NULL) {
 		return scene->GetBackgroundColor();
 	}
 	//intersection    -> get color

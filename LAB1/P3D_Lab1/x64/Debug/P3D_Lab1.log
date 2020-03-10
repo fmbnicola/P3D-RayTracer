@@ -1,19 +1,17 @@
 ﻿  scene.cpp
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\camera.h(70,17): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\camera.h(71,14): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
 C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\color.h(42,14): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
 C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\color.h(41,14): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
 C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\color.h(40,28): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(137,23): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(157,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(285,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(286,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(225,8): warning C4101: 't_intersec': unreferenced local variable
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(339,55): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(339,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(339,45): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(339,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(339,33): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(439,58): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(149,23): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(169,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(297,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(298,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(237,8): warning C4101: 't_intersec': unreferenced local variable
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(351,55): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(351,52): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(351,45): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(351,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(351,33): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\scene.cpp(451,58): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
   P3D_Lab1.vcxproj -> C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\x64\Debug\P3D_Lab1.exe
   0 File(s) copied
