@@ -94,8 +94,24 @@ bool Sphere::intercepts(Ray& r, float& t)
 
 	float b = co*Rd;
 
+	float c = doc2 - radius * radius;
 
-	return (false);
+	if (c > 0) {
+		if (b < 0) return false;
+	}
+
+	float discriminant = (b * b - c);
+
+	if (discriminant < 0) return false;
+
+	if (c > 0) {
+		t = b - sqrt(discriminant);
+	}
+	else {
+		t = b + sqrt(discriminant);
+	}
+
+	return true;
 }
 
 
