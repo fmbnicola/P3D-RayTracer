@@ -84,9 +84,28 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 	if (min_obj == NULL) {
 		return scene->GetBackgroundColor();
 	}
-	//intersection    -> get color
 	else {
-		return Color(1.0f, 0.0f, 0.0f); //FIXME: here we are just returning red
+
+		Material* mat = min_obj->GetMaterial();
+		Color col = Color(1.0f, 0.0f, 0.0f);  //difuse component
+
+		//if reflective
+		if (mat->GetReflection() > 0) {
+
+			//throw ray in direction of reflection
+			//rayTracing(...)
+
+			col = Color(0.0f, 1.0f, 0.0f); //add refelctive component
+		}
+		//if transparent
+		if (mat->GetTransmittance() > 0) {
+
+			//throw ray in direction of refraction
+			//rayTracing(...)
+			col = Color(0.0f, 0.0f, 1.0f); //add refraction component
+		}
+
+		return col;
 	}
 }
 

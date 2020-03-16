@@ -78,6 +78,7 @@ bool Plane::intercepts(Ray& r, float& t)
 	return (t > 0);
 }
 
+
 Vector Plane::getNormal(Vector point)
 {
 	return PN;
