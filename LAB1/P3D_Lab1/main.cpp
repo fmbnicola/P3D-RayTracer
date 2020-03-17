@@ -60,7 +60,6 @@ int RES_X, RES_Y;
 
 int WindowHandle = 0;
 
-
 Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of medium 1 where the ray is travelling
 {
 	Object* obj     = NULL;
@@ -85,6 +84,20 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 		return scene->GetBackgroundColor();
 	}
 	else {
+		Vector intercept = ray.origin + ray.direction * min_t;
+		Vector dir;
+
+		for (int i = 0; i < scene->getNumLights(); i++) {
+			dir = (scene->getLight(i)->position - intercept).normalize();
+			Ray feeler = Ray(intercept, dir);
+
+			for (int j = 0; j < scene->getNumObjects(); j++) {
+
+				obj = scene->getObject(j);
+
+				if (obj->intercepts(feeler, t)) return Color(0.0f, 0.0f, 0.0f);
+			}
+		}
 
 		Material* mat = min_obj->GetMaterial();
 		Color col = Color(1.0f, 0.0f, 0.0f);  //difuse component
