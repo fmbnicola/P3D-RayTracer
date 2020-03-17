@@ -12,7 +12,7 @@ Triangle::Triangle(Vector& P0, Vector& P1, Vector& P2)
 	points[0] = P0; points[1] = P1; points[2] = P2;
 
 	/* Calculate the normal */
-	normal = Vector(0, 0, 0);
+	normal = (P1 - P0) % (P2 - P0);
 	normal.normalize();
 
 	//Calculate the Min and Max for bounding box
@@ -38,9 +38,46 @@ Vector Triangle::getNormal(Vector point)
 // Ray/Triangle intersection test using Tomas Moller-Ben Trumbore algorithm.
 //
 
-bool Triangle::intercepts(Ray& r, float& t) {
+bool Triangle::intercepts(Ray& ray, float& time) {
 
-	return (false);
+	Vector P0 = points[0], P1 = points[1], P2 = points[2];
+
+	float a = P0.x - P1.x, b = P0.x - P2.x, c = ray.direction.x, d = P0.x - ray.origin.x;
+	float e = P0.y - P1.y, f = P0.y - P2.y, g = ray.direction.y, h = P0.y - ray.origin.y;
+	float i = P0.z - P1.z, j = P0.z - P2.z, k = ray.direction.z, l = P0.z - ray.origin.z;
+
+	float m = f * k - g * j, n = h * k - g * l, p = f * l - h * j;
+	float q = g * i - e * k, s = e * j - f * i;
+
+	float inv_denom = 1.0 / (a * m + b * q + c * s);
+
+	float e1 = d * m - b * n - c * p;
+	float beta = e1 * inv_denom;
+
+	if (beta < 0.0)
+		return (false);
+
+	float r = r = e * l - h * i;
+	float e2 = a * n + d * q + c * r;
+	float gamma = e2 * inv_denom;
+
+	if (gamma < 0.0)
+		return (false);
+
+	if (beta + gamma > 1.0)
+		return (false);
+
+	float e3 = a * p - b * r + d * s;
+	float t = e3 * inv_denom;
+
+	if (t < 0.0001)
+		return (false);
+
+	time = t;
+	//sr.normal = normal;
+	//sr.local_hit_point = ray.origin + t * ray.direction;
+
+	return (true);
 }
 
 Plane::Plane(Vector& a_PN, Vector a_A)
