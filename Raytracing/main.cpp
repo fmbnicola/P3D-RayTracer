@@ -60,6 +60,12 @@ int RES_X, RES_Y;
 
 int WindowHandle = 0;
 
+Vector offsetIntersection(Vector inter, Object* obj) {
+	Vector normal = obj->getNormal(inter);
+	Vector intersect = inter + normal * .001;
+	return intersect.normalize();
+}
+
 Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of medium 1 where the ray is travelling
 {
 	Object* obj     = NULL;
@@ -91,10 +97,13 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 		Color spec = Color();
 
 		Light* light = NULL;
-		Vector intercept = ray.origin + ray.direction * min_t;
+		//fixes floating point errors in intersection
+		Vector interceptNotPrecise = ray.origin + ray.direction * min_t;
+		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj);
+
 		Vector l_dir, norm, blinn;
 		float fs;
-
+		// cast a shadow ray for every light in the scene
 		for (int i = 0; i < scene->getNumLights(); i++) {
 			
 			light = scene->getLight(i);
@@ -102,12 +111,12 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			l_dir = (light->position - intercept).normalize();
 			Ray feeler = Ray(intercept, l_dir);
 			fs = 1;
-
+			// intersect the shadow ray with each object in the scene
 			for (int j = 0; j < scene->getNumObjects(); j++) {
 
 				obj = scene->getObject(j);
 
-				if (obj->intercepts(feeler, t)) fs = 0;
+				if (obj->intercepts(feeler, t)) fs = 0; //is in shadow
 			}
 
 			//add each lights contribution to output 
