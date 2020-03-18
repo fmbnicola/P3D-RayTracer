@@ -1,6 +1,0 @@
-﻿  main.cpp
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\color.h(42,14): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\color.h(41,14): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\P3D_Lab1\color.h(40,28): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-  P3D_Lab1.vcxproj -> C:\Users\fmbni\Desktop\P3D\Prog3D\LAB1\x64\Debug\P3D_Lab1.exe
-  0 File(s) copied
