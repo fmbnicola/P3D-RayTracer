@@ -385,3 +385,7 @@ healthchecksdb
 MigrationBackup/
 
 # End of https://www.gitignore.io/api/c++,visualstudio
+
+Raytracing/Dependencies/
+
+Raytracing/RT_Output.png
