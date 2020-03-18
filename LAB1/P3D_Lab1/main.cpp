@@ -84,23 +84,41 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 		return scene->GetBackgroundColor();
 	}
 	else {
+		
+		Material* mat = min_obj->GetMaterial();
+		Color col  = Color();
+		Color diff = Color();
+		Color spec = Color();
+
+		Light* light = NULL;
 		Vector intercept = ray.origin + ray.direction * min_t;
-		Vector dir;
+		Vector l_dir, norm, blinn;
+		float fs;
 
 		for (int i = 0; i < scene->getNumLights(); i++) {
-			dir = (scene->getLight(i)->position - intercept).normalize();
-			Ray feeler = Ray(intercept, dir);
+			
+			light = scene->getLight(i);
+
+			l_dir = (light->position - intercept).normalize();
+			Ray feeler = Ray(intercept, l_dir);
+			fs = 1;
 
 			for (int j = 0; j < scene->getNumObjects(); j++) {
 
 				obj = scene->getObject(j);
 
-				if (obj->intercepts(feeler, t)) return Color(0.0f, 0.0f, 0.0f);
+				if (obj->intercepts(feeler, t)) fs = 0;
 			}
-		}
 
-		Material* mat = min_obj->GetMaterial();
-		Color col = Color(1.0f, 0.0f, 0.0f);  //difuse component
+			//add each lights contribution to output 
+			Vector norm = obj->getNormal(intercept).normalize();
+			Vector blinn = ((l_dir*-1 + ray.getDirection()) / 2).normalize();
+
+			diff = (light->color * mat->GetDiffColor()) *    ( norm * l_dir*-1);				 //FIXME: nas cores devia ser o cross product
+			spec = (light->color * mat->GetSpecColor()) * pow( blinn * norm, mat->GetShine());   //FIXME: nas cores devia ser o cross product
+
+			col += (diff + spec) * fs;
+		}
 
 		//if reflective
 		if (mat->GetReflection() > 0) {
@@ -108,14 +126,14 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			//throw ray in direction of reflection
 			//rayTracing(...)
 
-			col = Color(0.0f, 1.0f, 0.0f); //add refelctive component
+			//col += ... //add refelctive component
 		}
 		//if transparent
 		if (mat->GetTransmittance() > 0) {
 
 			//throw ray in direction of refraction
 			//rayTracing(...)
-			col = Color(0.0f, 0.0f, 1.0f); //add refraction component
+			//col += ... //add refraction component
 		}
 
 		return col;

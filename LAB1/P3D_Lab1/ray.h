@@ -10,5 +10,9 @@ public:
 
 	Vector origin;
 	Vector direction;
+
+	Vector getDirection() {
+		return direction.normalize();
+	}
 };
 #endif

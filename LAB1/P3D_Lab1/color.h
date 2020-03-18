@@ -60,6 +60,24 @@ public:
   Color		operator *=	(Color c)
 				{ R*=c.R; G*=c.G; B*=c.B; return *this; }
 
+
+  Color     operator%(Color c) //FIXME isto n deve estar bem
+  {
+      float uX = R;
+      float uY = G;
+      float uZ = B;
+
+      float vX = c.R;
+      float vY = c.G;
+      float vZ = c.B;
+
+      float sX = uY * vZ - uZ * vY;
+      float sY = uZ * vX - uX * vZ;
+      float sZ = uX * vY - uY * vX;
+
+      return Color(sX, sY, sZ);
+  }
+
    friend inline
   istream&	operator >>	(istream& s, Color& c)
 	{ return s >> c.R >> c.G >> c.B; }
