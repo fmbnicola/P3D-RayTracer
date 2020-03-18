@@ -114,8 +114,8 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			Vector norm = obj->getNormal(intercept).normalize();
 			Vector blinn = ((l_dir*-1 + ray.getDirection()) / 2).normalize();
 
-			diff = (light->color * mat->GetDiffColor()) *    ( norm * l_dir*-1);				 //FIXME: nas cores devia ser o cross product
-			spec = (light->color * mat->GetSpecColor()) * pow( blinn * norm, mat->GetShine());   //FIXME: nas cores devia ser o cross product
+			diff = (light->color * mat->GetDiffColor()) *    ( norm * l_dir*-1);				
+			spec = (light->color * mat->GetSpecColor()) * pow( blinn * norm, mat->GetShine());    //FIXME o erro esta aqui algures ..
 
 			col += (diff + spec) * fs;
 		}

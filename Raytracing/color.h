@@ -61,21 +61,13 @@ public:
 				{ R*=c.R; G*=c.G; B*=c.B; return *this; }
 
 
-  Color     operator%(Color c) //FIXME isto n deve estar bem
+  Color     operator%(Color c)
   {
-      float uX = R;
-      float uY = G;
-      float uZ = B;
+      float r = (G * c.B) - (c.G * B);
+      float g = (B * c.R) - (c.B * R);
+      float b = (R * c.G) - (c.R * G);
 
-      float vX = c.R;
-      float vY = c.G;
-      float vZ = c.B;
-
-      float sX = uY * vZ - uZ * vY;
-      float sY = uZ * vX - uX * vZ;
-      float sZ = uX * vY - uY * vX;
-
-      return Color(sX, sY, sZ);
+      return Color(r, g, b);
   }
 
    friend inline
