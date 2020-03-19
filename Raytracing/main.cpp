@@ -118,17 +118,21 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 
 				obj = scene->getObject(j);
 
-				if (obj->intercepts(feeler, t)) fs = 0; //is in shadow
+				if (obj->intercepts(feeler, t)) {
+					fs = 0; //is in shadow
+					break;
+				}
 			}
 
 			//add each lights contribution to output 
-			Vector norm = obj->getNormal(intercept).normalize();
-			Vector blinn = ((l_dir*-1 + ray.getDirection()) / 2).normalize();
+			Vector norm = min_obj->getNormal(intercept);
+			Vector blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
 
-			diff += (light->color * mat->GetDiffColor()) *    ( norm * (l_dir*-1)) * fs;				
+			diff += (light->color * mat->GetDiffColor()) * (norm * l_dir) * fs;				
 			
-			spec += (light->color * mat->GetSpecColor()) * pow( blinn * norm, mat->GetShine()) * fs;    //FIXME o erro esta aqui algures ..
+			spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine()) * fs;    //FIXME o erro esta aqui algures ..
 		}
+
 		col += diff * mat->GetDiffuse() + spec * mat->GetSpecular();
 
 		//if reflective
