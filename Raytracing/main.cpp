@@ -128,9 +128,11 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			Vector norm = min_obj->getNormal(intercept);
 			Vector blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
 
-			diff += (light->color * mat->GetDiffColor()) * (norm * l_dir) * fs;				
-			
-			spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine()) * fs;    //FIXME o erro esta aqui algures ..
+			if (fs != 0) {
+				diff += (light->color * mat->GetDiffColor()) * (norm * l_dir);
+
+				spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine());    //FIXME o erro esta aqui algures ..
+			}
 		}
 
 		col += diff * mat->GetDiffuse() + spec * mat->GetSpecular();
