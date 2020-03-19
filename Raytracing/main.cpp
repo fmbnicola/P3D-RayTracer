@@ -62,8 +62,8 @@ int WindowHandle = 0;
 
 Vector offsetIntersection(Vector inter, Object* obj) {
 	Vector normal = obj->getNormal(inter);
-	Vector intersect = inter + normal * .001;
-	return intersect.normalize();
+	Vector intersect = inter + normal * .0001;
+	return intersect;
 }
 
 Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of medium 1 where the ray is travelling
@@ -97,12 +97,14 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 		Color spec = Color();
 
 		Light* light = NULL;
+
+		Vector l_dir, norm, blinn;
+		float fs;
+
 		//fixes floating point errors in intersection
 		Vector interceptNotPrecise = ray.origin + ray.direction * min_t;
 		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj);
 
-		Vector l_dir, norm, blinn;
-		float fs;
 		// cast a shadow ray for every light in the scene
 		for (int i = 0; i < scene->getNumLights(); i++) {
 			
@@ -123,11 +125,11 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			Vector norm = obj->getNormal(intercept).normalize();
 			Vector blinn = ((l_dir*-1 + ray.getDirection()) / 2).normalize();
 
-			diff = (light->color * mat->GetDiffColor()) *    ( norm * l_dir*-1);				
-			spec = (light->color * mat->GetSpecColor()) * pow( blinn * norm, mat->GetShine());    //FIXME o erro esta aqui algures ..
-
-			col += (diff + spec) * fs;
+			diff += (light->color * mat->GetDiffColor()) *    ( norm * (l_dir*-1)) * fs;				
+			
+			spec += (light->color * mat->GetSpecColor()) * pow( blinn * norm, mat->GetShine()) * fs;    //FIXME o erro esta aqui algures ..
 		}
+		col += diff * mat->GetDiffuse() + spec * mat->GetSpecular();
 
 		//if reflective
 		if (mat->GetReflection() > 0) {
