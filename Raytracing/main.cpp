@@ -64,7 +64,7 @@ Vector offsetIntersection(Vector inter, Vector normal) {
 	return  inter + normal * .0001;
 }
 
-Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of medium 1 where the ray is travelling
+Color rayTracing( Ray ray, int depth, float ior_1, bool inside = false)  //index of refraction of medium 1 where the ray is travelling
 {
 	Object* obj     = NULL;
 	Object* min_obj = NULL;
@@ -138,6 +138,7 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 
 		if (depth <= 0) return col;
 
+		norm = !inside ? norm : norm * -1;
 		//if reflective
 		if (mat->GetReflection() > 0) {
 			//throw ray in direction of reflection
@@ -146,7 +147,7 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			Ray rray = Ray(intercept, rdir);
 
 			//rayTracing(...)
-			Color rcol = rayTracing(rray, depth - 1, ior_1);			
+			Color rcol = rayTracing(rray, depth - 1, ior_1, inside);			
 
 			//col += ... //add refelctive component
 			col += rcol * mat->GetReflection();
@@ -156,7 +157,9 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			//throw ray in direction of refraction
 			Vector v = ray.getDirection() * -1;
 			Vector vt = (norm * (v * norm)) - v;
-			float sinOt = (ior_1 / mat->GetRefrIndex()) * vt.length(), cosOt;
+			float n = !inside ? ior_1 / mat->GetRefrIndex() : ior_1 / 1; //MAGIC NUMBER
+
+			float sinOt = (n) * vt.length(), cosOt;
 			float insqrt = 1 - pow(sinOt, 2);
 			if (insqrt >= 0) {
 				cosOt = sqrt(insqrt);
@@ -166,8 +169,9 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 
 				Ray refractedRay = Ray(interceptin, refractDir);
 				
+				float newior = !inside ? mat->GetRefrIndex() : 1; //MAGIC NUMBER
 				//rayTracing(...)
-				Color refCol = rayTracing(refractedRay, depth - 1, mat->GetRefrIndex());
+				Color refCol = rayTracing(refractedRay, depth - 1, newior, !inside);
 
 				//col += ... //add refraction component
 				col += refCol * mat->GetTransmittance();
@@ -375,7 +379,7 @@ void renderScene()
 
 			///*YOUR 2 FUNTIONS:
 			Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-			color = rayTracing(ray, 3, 1.0);
+			color = rayTracing(ray, 5, 1.0);
 			//*/
 
 			//color = scene->GetBackgroundColor(); //just for the template
