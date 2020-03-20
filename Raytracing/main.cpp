@@ -60,10 +60,8 @@ int RES_X, RES_Y;
 
 int WindowHandle = 0;
 
-Vector offsetIntersection(Vector inter, Object* obj, int dir) {
-	Vector normal = obj->getNormal(inter);
-	Vector intersect = inter + normal * .0001 * dir;
-	return intersect;
+Vector offsetIntersection(Vector inter, Vector normal) {
+	return  inter + normal * .0001;
 }
 
 Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of medium 1 where the ray is travelling
@@ -103,8 +101,8 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 
 		//fixes floating point errors in intersection
 		Vector interceptNotPrecise = ray.origin + ray.direction * min_t;
-		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj, 1);
-		Vector interceptin = offsetIntersection(interceptNotPrecise, min_obj, -1);
+		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj->getNormal(interceptNotPrecise));
+
 		norm = min_obj->getNormal(intercept);
 
 		// cast a shadow ray for every light in the scene
@@ -163,13 +161,16 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			if (insqrt >= 0) {
 				cosOt = sqrt(insqrt);
 
-				Ray refractedRay = Ray(interceptin, (vt.normalize() * sinOt + norm * (-cosOt)).normalize());
+				Vector refractDir = (vt.normalize() * sinOt + norm * (-cosOt)).normalize();
+				Vector interceptin = offsetIntersection(interceptNotPrecise, refractDir);
+
+				Ray refractedRay = Ray(interceptin, refractDir);
 				
 				//rayTracing(...)
 				Color refCol = rayTracing(refractedRay, depth - 1, mat->GetRefrIndex());
 
 				//col += ... //add refraction component
-				col += refCol * (mat->GetTransmittance());
+				col += refCol * mat->GetTransmittance();
 			}
 		}
 
@@ -374,7 +375,7 @@ void renderScene()
 
 			///*YOUR 2 FUNTIONS:
 			Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-			color = rayTracing(ray, 2, 1.0);
+			color = rayTracing(ray, 3, 1.0);
 			//*/
 
 			//color = scene->GetBackgroundColor(); //just for the template
