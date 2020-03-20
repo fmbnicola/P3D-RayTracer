@@ -1,7 +1,7 @@
  ///////////////////////////////////////////////////////////////////////
 //
 // P3D Course
-// (c) 2019 by João Madeiras Pereira
+// (c) 2019 by Joï¿½o Madeiras Pereira
 //Ray Tracing P3F scenes and drawing points with Modern OpenGL
 //
 ///////////////////////////////////////////////////////////////////////
@@ -60,9 +60,9 @@ int RES_X, RES_Y;
 
 int WindowHandle = 0;
 
-Vector offsetIntersection(Vector inter, Object* obj) {
+Vector offsetIntersection(Vector inter, Object* obj, int dir) {
 	Vector normal = obj->getNormal(inter);
-	Vector intersect = inter + normal * .0001;
+	Vector intersect = inter + normal * .0001 * dir;
 	return intersect;
 }
 
@@ -103,8 +103,8 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 
 		//fixes floating point errors in intersection
 		Vector interceptNotPrecise = ray.origin + ray.direction * min_t;
-		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj);
-
+		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj, 1);
+		Vector interceptin = offsetIntersection(interceptNotPrecise, min_obj, -1);
 		norm = min_obj->getNormal(intercept);
 
 		// cast a shadow ray for every light in the scene
@@ -127,7 +127,7 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			}
 
 			//add each lights contribution to output 
-			Vector blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
+			blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
 
 			if (fs != 0) {
 				diff += (light->color * mat->GetDiffColor()) * (norm * l_dir);
@@ -155,10 +155,22 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 		}
 		//if transparent
 		if (mat->GetTransmittance() > 0) {
-
 			//throw ray in direction of refraction
-			//rayTracing(...)
-			//col += ... //add refraction component
+			Vector v = ray.getDirection() * -1;
+			Vector vt = (norm * (v * norm)) - v;
+			float sinOt = (ior_1 / mat->GetRefrIndex()) * vt.length(), cosOt;
+			float insqrt = 1 - pow(sinOt, 2);
+			if (insqrt >= 0) {
+				cosOt = sqrt(insqrt);
+
+				Ray refractedRay = Ray(interceptin, (vt.normalize() * sinOt + norm * (-cosOt)).normalize());
+				
+				//rayTracing(...)
+				Color refCol = rayTracing(refractedRay, depth - 1, mat->GetRefrIndex());
+
+				//col += ... //add refraction component
+				col += refCol * (mat->GetTransmittance());
+			}
 		}
 
 		return col;
@@ -266,8 +278,8 @@ void createBufferObjects()
 	glGenBuffers(2, VboId);
 	glBindBuffer(GL_ARRAY_BUFFER, VboId[0]);
 
-	/* Só se faz a alocação dos arrays glBufferData (NULL), e o envio dos pontos para a placa gráfica
-	é feito na drawPoints com GlBufferSubData em tempo de execução pois os arrays são GL_DYNAMIC_DRAW */
+	/* Sï¿½ se faz a alocaï¿½ï¿½o dos arrays glBufferData (NULL), e o envio dos pontos para a placa grï¿½fica
+	ï¿½ feito na drawPoints com GlBufferSubData em tempo de execuï¿½ï¿½o pois os arrays sï¿½o GL_DYNAMIC_DRAW */
 	glBufferData(GL_ARRAY_BUFFER, size_vertices, NULL, GL_DYNAMIC_DRAW);
 	glEnableVertexAttribArray(VERTEX_COORD_ATTRIB);
 	glVertexAttribPointer(VERTEX_COORD_ATTRIB, 2, GL_FLOAT, 0, 0, 0);
@@ -362,7 +374,7 @@ void renderScene()
 
 			///*YOUR 2 FUNTIONS:
 			Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-			color = rayTracing(ray, 1, 1.0);
+			color = rayTracing(ray, 2, 1.0);
 			//*/
 
 			//color = scene->GetBackgroundColor(); //just for the template

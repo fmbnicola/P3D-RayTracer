@@ -77,6 +77,15 @@
     <None Include="P3D_Scenes\tri_low.p3f">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="P3D_Scenes\mount_high.p3f">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="P3D_Scenes\mount_low.p3f">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="P3D_Scenes\mount_very_high.p3f">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="skybox\back.jpg">

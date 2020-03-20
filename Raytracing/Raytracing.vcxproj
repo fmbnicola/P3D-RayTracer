@@ -23,7 +23,7 @@
     <ProjectGuid>{4207576a-5224-4871-b881-cdadc6d9a95d}</ProjectGuid>
     <RootNamespace>P3D</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-     <ProjectName>P3D</ProjectName>
+    <ProjectName>P3D</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -199,6 +199,9 @@
     <None Include="P3D_Scenes\balls_high.p3f" />
     <None Include="P3D_Scenes\balls_low.p3f" />
     <None Include="P3D_Scenes\balls_medium.p3f" />
+    <None Include="P3D_Scenes\mount_high.p3f" />
+    <None Include="P3D_Scenes\mount_low.p3f" />
+    <None Include="P3D_Scenes\mount_very_high.p3f" />
     <None Include="P3D_Scenes\tri_low.p3f" />
   </ItemGroup>
   <ItemGroup>
