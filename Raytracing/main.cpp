@@ -105,6 +105,8 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 		Vector interceptNotPrecise = ray.origin + ray.direction * min_t;
 		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj);
 
+		norm = min_obj->getNormal(intercept);
+
 		// cast a shadow ray for every light in the scene
 		for (int i = 0; i < scene->getNumLights(); i++) {
 			
@@ -125,25 +127,31 @@ Color rayTracing( Ray ray, int depth, float ior_1)  //index of refraction of med
 			}
 
 			//add each lights contribution to output 
-			Vector norm = min_obj->getNormal(intercept);
 			Vector blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
 
 			if (fs != 0) {
 				diff += (light->color * mat->GetDiffColor()) * (norm * l_dir);
 
-				spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine());    //FIXME o erro esta aqui algures ..
+				spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine());
 			}
 		}
 
 		col += diff * mat->GetDiffuse() + spec * mat->GetSpecular();
 
+		if (depth <= 0) return col;
+
 		//if reflective
 		if (mat->GetReflection() > 0) {
-
 			//throw ray in direction of reflection
+			Vector rdir = norm * ((ray.getDirection() * -1) * norm) * 2 + ray.getDirection(); // 2(V*n)*n-V; V=-ray
+
+			Ray rray = Ray(intercept, rdir);
+
 			//rayTracing(...)
+			Color rcol = rayTracing(rray, depth - 1, ior_1);			
 
 			//col += ... //add refelctive component
+			col += rcol * mat->GetReflection();
 		}
 		//if transparent
 		if (mat->GetTransmittance() > 0) {
