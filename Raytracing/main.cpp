@@ -105,32 +105,34 @@ Color rayTracing( Ray ray, int depth, float ior_1, bool inside = false)  //index
 
 		norm = min_obj->getNormal(intercept);
 
-		// cast a shadow ray for every light in the scene
-		for (int i = 0; i < scene->getNumLights(); i++) {
-			
-			light = scene->getLight(i);
+		if (!inside) {
+			// cast a shadow ray for every light in the scene
+			for (int i = 0; i < scene->getNumLights(); i++) {
 
-			l_dir = (light->position - intercept).normalize();
-			Ray feeler = Ray(intercept, l_dir);
-			fs = 1;
-			// intersect the shadow ray with each object in the scene
-			for (int j = 0; j < scene->getNumObjects(); j++) {
+				light = scene->getLight(i);
 
-				obj = scene->getObject(j);
+				l_dir = (light->position - intercept).normalize();
+				Ray feeler = Ray(intercept, l_dir);
+				fs = 1;
+				// intersect the shadow ray with each object in the scene
+				for (int j = 0; j < scene->getNumObjects(); j++) {
 
-				if (obj->intercepts(feeler, t)) {
-					fs = 0; //is in shadow
-					break;
+					obj = scene->getObject(j);
+
+					if (obj->intercepts(feeler, t)) {
+						fs = 0; //is in shadow
+						break;
+					}
 				}
-			}
 
-			//add each lights contribution to output 
-			blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
+				//add each lights contribution to output 
+				blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
 
-			if (fs != 0) {
-				diff += (light->color * mat->GetDiffColor()) * (norm * l_dir);
+				if (fs != 0) {
+					diff += (light->color * mat->GetDiffColor()) * (norm * l_dir);
 
-				spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine());
+					spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine());
+				}
 			}
 		}
 
