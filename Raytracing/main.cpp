@@ -32,6 +32,13 @@
 
 #define MAX_DEPTH 4
 
+#define GRID_SIZE 4
+
+#define LIGHT_GRID 4
+
+//Antialiasing flag (also turns on the DOF)
+bool antialiasing = false;
+
 //Enable OpenGL drawing.  
 bool drawModeEnabled = true;
 
@@ -367,24 +374,61 @@ void renderScene()
 	int index_pos=0;
 	int index_col=0;
 	unsigned int counter = 0;
-	
+
+	set_rand_seed(time(NULL) * time(NULL));
+
+	if (!antialiasing) {
+		int limit = scene->getNumLights();
+		for (int k = 0; k < limit; k++) {
+			Light* light = scene->getLight(k);
+			light->color = light->color / 25;
+			
+			for (float i = -0.2f; i < 0.3f; i += 0.1f) {
+				for (float j = -0.2f; j < 0.3f; j += 0.1f) {
+					if (!(i == 0 && j == 0)) {
+						Vector pos = Vector(light->position.x + i, light->position.y + j, light->position.z);
+						scene->addLight(new Light(pos, light->color));
+					}
+				}
+			}
+		}
+	}
 
 	for (int y = 0; y < RES_Y; y++)
 	{
 		for (int x = 0; x < RES_X; x++)
 		{
-			Color color; 
-
+			Color color = Color(); 
 			Vector pixel;  //viewport coordinates
-			pixel.x = x + 0.5f;  
-			pixel.y = y + 0.5f;
 
-			///*YOUR 2 FUNTIONS:
-			Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-			color = rayTracing(ray, 5, 1.0);
-			//*/
+			if (antialiasing) {
+				for (int i = 0; i < GRID_SIZE; i++) {
+					for (int j = 0; j < GRID_SIZE; j++) {
+						pixel.x = x + (i + rand_float()) / GRID_SIZE;
+						pixel.y = y + (j + rand_float()) / GRID_SIZE;
+
+						Ray ray = scene->GetCamera()->PrimaryRay(pixel);
+						ray.i = i;
+						ray.j = j;
+						color += rayTracing(ray, 5, 1.0);
+					}
+				}
+
+				color = color / (GRID_SIZE * GRID_SIZE);
+			}
+			else {
+				pixel.x = x + 0.5;
+				pixel.y = y + 0.5;
+
+				Ray ray = scene->GetCamera()->PrimaryRay(pixel);
+				color += rayTracing(ray, 5, 1.0);
+			}
+
+			
 
 			//color = scene->GetBackgroundColor(); //just for the template
+
+			color.clamp();
 
 			img_Data[counter++] = u8fromfloat((float)color.r());
 			img_Data[counter++] = u8fromfloat((float)color.g());

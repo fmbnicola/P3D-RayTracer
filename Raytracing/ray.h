@@ -6,10 +6,11 @@
 class Ray
 {
 public:
-	Ray(const Vector& o, const Vector& dir ) : origin(o), direction(dir) {};
+	Ray(const Vector& o, const Vector& dir, int ix = 0, int jx = 0) : origin(o), direction(dir), i(ix), j(jx) {};
 
 	Vector origin;
 	Vector direction;
+	int i, j;
 
 	Vector getDirection() {
 		return direction.normalize();
