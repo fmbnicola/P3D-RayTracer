@@ -34,8 +34,9 @@
 
 #define GRID_SIZE 4
 
-#define LIGHT_GRID 8
-#define LIGHT_SIDE 1.0f
+#define LIGHT_SIDE 0.8f
+
+int light_grid = 1; // should be odd, for simplicity reasons
 
 //Antialiasing flag (also turns on the DOF)
 bool antialiasing = false;
@@ -378,12 +379,12 @@ void renderScene()
 
 	set_rand_seed(time(NULL) * time(NULL));
 
-	if (!antialiasing) {
+	if ((light_grid > 1) && (!antialiasing)) {
 		int limit = scene->getNumLights();
 		for (int k = 0; k < limit; k++) {
 			Light* light = scene->getLight(k);
-			light->color = light->color / (LIGHT_GRID * LIGHT_GRID);
-			float step = LIGHT_SIDE / LIGHT_GRID;
+			light->color = light->color / (light_grid * light_grid);
+			float step = LIGHT_SIDE / light_grid;
 			float start = floor((LIGHT_SIDE * 10.0f) / 2) /10;
 
 			for (float i = -start; i < (start + step); i += step) {
