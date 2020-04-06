@@ -39,7 +39,9 @@
 int light_grid = 1; // should be odd, for simplicity reasons
 
 //Antialiasing flag (also turns on the DOF)
-bool antialiasing = false;
+bool antialiasing = true;
+
+bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 
 //Enable OpenGL drawing.  
 bool drawModeEnabled = true;
@@ -404,6 +406,7 @@ void renderScene()
 		{
 			Color color = Color(); 
 			Vector pixel;  //viewport coordinates
+			Vector lens;   //lens coords
 
 			if (antialiasing) {
 				for (int i = 0; i < GRID_SIZE; i++) {
@@ -411,10 +414,17 @@ void renderScene()
 						pixel.x = x + (i + rand_float()) / GRID_SIZE;
 						pixel.y = y + (j + rand_float()) / GRID_SIZE;
 
-						Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-						ray.i = i;
-						ray.j = j;
-						color += rayTracing(ray, 5, 1.0);
+						Ray *ray = nullptr;
+						if (depthOfField) {
+							lens.x = (i + rand_float()) / GRID_SIZE;
+							lens.y = (j + rand_float()) / GRID_SIZE;
+							ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
+						}
+						else ray = &scene->GetCamera()->PrimaryRay(pixel);
+
+						ray->i = i;
+						ray->j = j;
+						color += rayTracing(*ray, 5, 1.0);
 					}
 				}
 

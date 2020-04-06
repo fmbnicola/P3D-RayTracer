@@ -96,7 +96,6 @@ public:
 		ls.y = lens_sample.y * aperture;
 		ls.z = 0;
 
-		//Updated point
 		Vector p;
 		p.x = ps.x * focal_ratio;
 		p.y = ps.y * focal_ratio;
