@@ -140,7 +140,7 @@ bool Sphere::intercepts(Ray& r, float& t)
 
 	float discriminant = (b * b - c);
 
-	if (discriminant < 0) return false;
+	if (discriminant < 0.0001) return false;
 
 	if (c > 0) {
 		t = b - sqrt(discriminant);

@@ -32,9 +32,9 @@
 
 #define MAX_DEPTH 4
 
-#define GRID_SIZE 4
+#define SPP 8
 
-#define LIGHT_SIDE 0.8f
+#define LIGHT_SIDE 1.0f
 
 int light_grid = 1; // should be odd, for simplicity reasons
 
@@ -75,7 +75,7 @@ Vector offsetIntersection(Vector inter, Vector normal) {
 	return  inter + normal * .0001;
 }
 
-Color rayTracing( Ray ray, int depth, float ior_1, bool inside = false)  //index of refraction of medium 1 where the ray is travelling
+Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool inside = false)  //index of refraction of medium 1 where the ray is travelling
 {
 	Object* obj     = NULL;
 	Object* min_obj = NULL;
@@ -122,7 +122,17 @@ Color rayTracing( Ray ray, int depth, float ior_1, bool inside = false)  //index
 
 				light = scene->getLight(i);
 
-				l_dir = (light->position - intercept).normalize();
+				if (antialiasing) {
+					Vector pos = Vector(
+						light->position.x + LIGHT_SIDE*(off_x + rand_float()) / SPP, 
+						light->position.y + LIGHT_SIDE*(off_y + rand_float()) / SPP,
+						light->position.z);
+					l_dir = (pos - intercept).normalize();
+				}
+				else {
+					l_dir = (light->position - intercept).normalize();
+				}
+
 				Ray feeler = Ray(intercept, l_dir);
 				fs = 1;
 				// intersect the shadow ray with each object in the scene
@@ -160,7 +170,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, bool inside = false)  //index
 			Ray rray = Ray(intercept, rdir);
 
 			//rayTracing(...)
-			Color rcol = rayTracing(rray, depth - 1, ior_1, inside);			
+			Color rcol = rayTracing(rray, depth - 1, ior_1, off_x, off_y, inside);			
 
 			//col += ... //add refelctive component
 			col += rcol * mat->GetReflection();
@@ -184,14 +194,14 @@ Color rayTracing( Ray ray, int depth, float ior_1, bool inside = false)  //index
 				
 				float newior = !inside ? mat->GetRefrIndex() : 1; //MAGIC NUMBER
 				//rayTracing(...)
-				Color refCol = rayTracing(refractedRay, depth - 1, newior, !inside);
+				Color refCol = rayTracing(refractedRay, depth - 1, newior, off_x, off_y, !inside);
 
 				//col += ... //add refraction component
 				col += refCol * mat->GetTransmittance();
 			}
 		}
 
-		return col;
+		return col.clamp();
 	}
 }
 
@@ -409,40 +419,36 @@ void renderScene()
 			Vector lens;   //lens coords
 
 			if (antialiasing) {
-				for (int i = 0; i < GRID_SIZE; i++) {
-					for (int j = 0; j < GRID_SIZE; j++) {
-						pixel.x = x + (i + rand_float()) / GRID_SIZE;
-						pixel.y = y + (j + rand_float()) / GRID_SIZE;
+				for (int i = 0; i < SPP; i++) {
+					for (int j = 0; j < SPP; j++) {
+						pixel.x = x + (i + rand_float()) / SPP;
+						pixel.y = y + (j + rand_float()) / SPP;
 
 						Ray *ray = nullptr;
 						if (depthOfField) {
-							lens.x = (i + rand_float()) / GRID_SIZE;
-							lens.y = (j + rand_float()) / GRID_SIZE;
+							lens.x = (i + rand_float()) / SPP;
+							lens.y = (j + rand_float()) / SPP;
 							ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
 						}
 						else ray = &scene->GetCamera()->PrimaryRay(pixel);
 
-						ray->i = i;
-						ray->j = j;
-						color += rayTracing(*ray, 5, 1.0);
+						color += rayTracing(*ray, 5, 1.0, i, j);
 					}
 				}
 
-				color = color / (GRID_SIZE * GRID_SIZE);
+				color = color / (SPP * SPP);
 			}
 			else {
 				pixel.x = x + 0.5;
 				pixel.y = y + 0.5;
 
 				Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-				color += rayTracing(ray, 5, 1.0);
+				color += rayTracing(ray, 5, 1.0, 0, 0);
 			}
 
 			
 
 			//color = scene->GetBackgroundColor(); //just for the template
-
-			color.clamp();
 
 			img_Data[counter++] = u8fromfloat((float)color.r());
 			img_Data[counter++] = u8fromfloat((float)color.g());
