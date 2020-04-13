@@ -39,7 +39,7 @@
 int light_grid = 1; // should be odd, for simplicity reasons
 
 //Antialiasing flag (also turns on the DOF)
-bool antialiasing = true;
+bool antialiasing = false;
 
 bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 
@@ -96,7 +96,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 	//no intersection -> return background
 	if (min_obj == NULL) {
-		return scene->GetBackgroundColor();
+		return scene->GetSkyboxColor(ray);
 	}
 	else {
 		
@@ -432,7 +432,7 @@ void renderScene()
 						}
 						else ray = &scene->GetCamera()->PrimaryRay(pixel);
 
-						color += rayTracing(*ray, 5, 1.0, i, j);
+						color += rayTracing(*ray, 2, 1.0, i, j);
 					}
 				}
 
@@ -443,7 +443,7 @@ void renderScene()
 				pixel.y = y + 0.5;
 
 				Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-				color += rayTracing(ray, 5, 1.0, 0, 0);
+				color += rayTracing(ray, 2, 1.0, 0, 0);
 			}
 
 			

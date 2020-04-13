@@ -177,11 +177,26 @@ AABB aaBox::GetBoundingBox() {
 
 bool aaBox::intercepts(Ray& ray, float& t)
 {
-	return (false);
+	if (this->GetBoundingBox().intercepts(ray, t)) {
+		return true;
+	}
+	return false;
 }
 
 Vector aaBox::getNormal(Vector point)
 {
+	if (min.x - 0.0001 < point.x < min.x + 0.0001)
+		return Vector(-1.0f, 0.0f, 0.0f);
+	if (max.x - 0.0001 < point.x < max.x + 0.0001)
+		return Vector(1.0f, 0.0f, 0.0f);
+	if (min.y - 0.0001 < point.y < min.y + 0.0001)
+		return Vector(0.0f, -1.0f, 0.0f);
+	if (max.y - 0.0001 < point.y < max.y + 0.0001)
+		return Vector(0.0f, 1.0f, 0.0f);
+	if (min.z - 0.0001 < point.z < min.z + 0.0001)
+		return Vector(0.0f, 0.0f, -1.0f);
+	if (max.z - 0.0001 < point.z < max.z + 0.0001)
+		return Vector(0.0f, 0.0f, 1.0f);
 	return Normal;
 }
 
