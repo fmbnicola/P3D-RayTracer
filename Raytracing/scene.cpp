@@ -172,7 +172,7 @@ aaBox::aaBox(Vector& minPoint, Vector& maxPoint) //Axis aligned Box: another geo
 }
 
 AABB aaBox::GetBoundingBox() {
-	return(AABB(min, max));
+	return(AABB(this->min, this->max));
 }
 
 bool aaBox::intercepts(Ray& ray, float& t)
