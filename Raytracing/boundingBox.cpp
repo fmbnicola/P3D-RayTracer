@@ -110,8 +110,12 @@ bool AABB::intercepts(const Ray& ray, float& t)
 	if (tz_max < t1)
 		t1 = tz_max;
 	
-	if (t0 < 0) t = t1;
-	else t = t0;
+	if (t0 < 0) {
+		t = t1;
+	}
+	else {
+		t = t0;
+	}
 
 	return (t0 < t1 && t1 > 0.0001);
 }

@@ -185,19 +185,42 @@ bool aaBox::intercepts(Ray& ray, float& t)
 
 Vector aaBox::getNormal(Vector point)
 {
-	if (min.x - 0.0001 < point.x < min.x + 0.0001)
-		return Vector(-1.0f, 0.0f, 0.0f);
-	if (max.x - 0.0001 < point.x < max.x + 0.0001)
-		return Vector(1.0f, 0.0f, 0.0f);
-	if (min.y - 0.0001 < point.y < min.y + 0.0001)
-		return Vector(0.0f, -1.0f, 0.0f);
-	if (max.y - 0.0001 < point.y < max.y + 0.0001)
-		return Vector(0.0f, 1.0f, 0.0f);
-	if (min.z - 0.0001 < point.z < min.z + 0.0001)
-		return Vector(0.0f, 0.0f, -1.0f);
-	if (max.z - 0.0001 < point.z < max.z + 0.0001)
-		return Vector(0.0f, 0.0f, 1.0f);
-	return Normal;
+	Vector center = (max + min) / 2;
+	Vector co = point - center;
+	Vector norm;
+	int dir; // 0 -> x, 1 -> y, 2 -> z
+	
+	if (fabs(co.x) > fabs(co.y)) {
+		dir = 0;
+	}
+	else {
+		dir = 1;
+	}
+
+	if (dir == 0 && fabs(co.z) > fabs(co.x)) {
+		dir = 2;
+	}
+	else if (dir == 1 && fabs(co.z) > fabs(co.y)) {
+		dir = 2;
+	}
+
+	switch (dir)
+	{
+	case 0:
+		if (co.x >= 0) norm = Vector(1, 0, 0);
+		else norm = Vector(-1, 0, 0);
+		break;
+	case 1:
+		if (co.y >= 0) norm = Vector(0, 1, 0);
+		else norm = Vector(0, -1, 0);
+		break;
+	case 2:
+		if (co.z >= 0) norm = Vector(0, 0, 1);
+		else norm = Vector(0, 0, -1);
+		break;
+	}
+
+	return norm;
 }
 
 Scene::Scene()

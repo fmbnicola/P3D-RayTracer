@@ -151,7 +151,6 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 				if (fs != 0) {
 					diff += (light->color * mat->GetDiffColor()) * (norm * l_dir);
-
 					spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine());
 				}
 			}
