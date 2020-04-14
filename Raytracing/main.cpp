@@ -32,14 +32,14 @@
 
 #define MAX_DEPTH 4
 
-#define SPP 8
+#define SPP 3
 
 #define LIGHT_SIDE 1.0f
 
 int light_grid = 1; // should be odd, for simplicity reasons
 
 //Antialiasing flag (also turns on the DOF)
-bool antialiasing = false;
+bool antialiasing = true;
 
 bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 
@@ -160,7 +160,47 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 		if (depth <= 0) return col;
 
+		// refraction and reflected components
 		norm = !inside ? norm : norm * -1;
+		float Kr;
+
+		Vector v = ray.getDirection() * -1;
+		Vector vn = (norm * (v * norm));
+		Vector vt = vn - v;
+		Color refrCol = Color(), reflCol = Color();
+
+		if (mat->GetTransmittance() == 0) {
+			Kr = mat->GetSpecular();
+		}
+		else {
+			float Rs = 1, Rp = 1;
+
+			float n = !inside ? ior_1 / mat->GetRefrIndex() : ior_1 / 1; //MAGIC NUMBER
+
+			float cosOi = vn.length();
+			float sinOt = (n) * vt.length(), cosOt;
+			float insqrt = 1 - pow(sinOt, 2);
+
+			if (insqrt >= 0) {
+				cosOt = sqrt(insqrt);
+
+				Vector refractDir = (vt.normalize() * sinOt + norm * (-cosOt)).normalize();
+				Vector interceptin = offsetIntersection(interceptNotPrecise, refractDir);
+
+				Ray refractedRay = Ray(interceptin, refractDir);
+
+				float newior = !inside ? mat->GetRefrIndex() : 1; //MAGIC NUMBER
+				//rayTracing(...)
+				refrCol = rayTracing(refractedRay, depth - 1, newior, off_x, off_y, !inside);
+
+				Rs = pow(fabs((ior_1 * cosOi - newior * cosOt) / (ior_1 * cosOi + newior * cosOt)), 2);
+				Rp = pow(fabs((ior_1 * cosOt - newior * cosOi) / (ior_1 * cosOt + newior * cosOi)), 2);
+			}
+
+			Kr = 1 / 2 * (Rs + Rp);
+
+		}
+
 		//if reflective
 		if (mat->GetReflection() > 0) {
 			//throw ray in direction of reflection
@@ -169,36 +209,10 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 			Ray rray = Ray(intercept, rdir);
 
 			//rayTracing(...)
-			Color rcol = rayTracing(rray, depth - 1, ior_1, off_x, off_y, inside);			
-
-			//col += ... //add refelctive component
-			col += rcol * mat->GetReflection();
+			reflCol = rayTracing(rray, depth - 1, ior_1, off_x, off_y, inside);
 		}
-		//if transparent
-		if (mat->GetTransmittance() > 0) {
-			//throw ray in direction of refraction
-			Vector v = ray.getDirection() * -1;
-			Vector vt = (norm * (v * norm)) - v;
-			float n = !inside ? ior_1 / mat->GetRefrIndex() : ior_1 / 1; //MAGIC NUMBER
 
-			float sinOt = (n) * vt.length(), cosOt;
-			float insqrt = 1 - pow(sinOt, 2);
-			if (insqrt >= 0) {
-				cosOt = sqrt(insqrt);
-
-				Vector refractDir = (vt.normalize() * sinOt + norm * (-cosOt)).normalize();
-				Vector interceptin = offsetIntersection(interceptNotPrecise, refractDir);
-
-				Ray refractedRay = Ray(interceptin, refractDir);
-				
-				float newior = !inside ? mat->GetRefrIndex() : 1; //MAGIC NUMBER
-				//rayTracing(...)
-				Color refCol = rayTracing(refractedRay, depth - 1, newior, off_x, off_y, !inside);
-
-				//col += ... //add refraction component
-				col += refCol * mat->GetTransmittance();
-			}
-		}
+		col += reflCol * Kr + refrCol * (1 - Kr);
 
 		return col.clamp();
 	}
@@ -431,7 +445,7 @@ void renderScene()
 						}
 						else ray = &scene->GetCamera()->PrimaryRay(pixel);
 
-						color += rayTracing(*ray, 2, 1.0, i, j);
+						color += rayTracing(*ray, 5, 1.0, i, j);
 					}
 				}
 
@@ -442,7 +456,7 @@ void renderScene()
 				pixel.y = y + 0.5;
 
 				Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-				color += rayTracing(ray, 2, 1.0, 0, 0);
+				color += rayTracing(ray, 5, 1.0, 0, 0);
 			}
 
 			
