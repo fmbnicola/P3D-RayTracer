@@ -36,6 +36,8 @@
 
 #define LIGHT_SIDE 1.0f
 
+#define USING_GRID true
+
 int light_grid = 1; // should be odd, for simplicity reasons
 
 //Antialiasing flag (also turns on the DOF)
@@ -69,6 +71,8 @@ GLuint VertexShaderId, FragmentShaderId, ProgramId;
 GLint UniformId;
 
 Scene* scene = NULL;
+Grid grid;
+
 int RES_X, RES_Y;
 
 int WindowHandle = 0;
@@ -81,18 +85,24 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 {
 	Object* obj     = NULL;
 	Object* min_obj = NULL;
+	Vector hit_p;
 
 	float t     = FLT_MAX; 
 	float min_t = FLT_MAX;
 
-	//iterate through all objects in scene to check for interception
-	for (int i = 0; i < scene->getNumObjects(); i++) {
+	if (USING_GRID) {
+		grid.Traverse(ray, &min_obj, hit_p);
+	}
+	else {
+		//iterate through all objects in scene to check for interception
+		for (int i = 0; i < scene->getNumObjects(); i++) {
 
-		obj = scene->getObject(i);
+			obj = scene->getObject(i);
 		
-		if (obj->intercepts(ray, t) && (t < min_t)) {
-			min_obj = obj;
-			min_t   = t;
+			if (obj->intercepts(ray, t) && (t < min_t)) {
+				min_obj = obj;
+				min_t   = t;
+			}
 		}
 	}
 
@@ -114,7 +124,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		float fs;
 
 		//fixes floating point errors in intersection
-		Vector interceptNotPrecise = ray.origin + ray.direction * min_t;
+		Vector interceptNotPrecise = (!USING_GRID) ? ray.origin + ray.direction * min_t : hit_p;
 		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj->getNormal(interceptNotPrecise));
 
 		norm = min_obj->getNormal(intercept);
@@ -404,6 +414,14 @@ void renderScene()
 	int index_pos=0;
 	int index_col=0;
 	unsigned int counter = 0;
+
+	grid = Grid();
+
+	for (int o = 0; o < scene->getNumObjects(); o++) {
+		grid.addObject(scene->getObject(o));
+	}
+
+	grid.Build();
 
 	set_rand_seed(time(NULL) * time(NULL));
 

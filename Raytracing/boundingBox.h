@@ -1,4 +1,7 @@
 
+#ifndef AABB_H
+#define AABB_H
+
 #include "vector.h"
 #include "ray.h"
 
@@ -16,3 +19,5 @@ public:
 	bool intercepts(const Ray& r, float& t);
 	bool isInside(const Vector& p);
 };
+
+#endif

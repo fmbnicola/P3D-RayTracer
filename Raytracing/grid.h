@@ -4,6 +4,9 @@
 #include <vector>
 #include <cmath>
 #include "scene.h"
+#include "vector.h"
+#include "boundingBox.h"
+#include "maths.h"
 
 using namespace std;
 
