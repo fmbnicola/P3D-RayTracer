@@ -46,7 +46,7 @@ bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 bool background = true;
 
 //Enable OpenGL drawing.  
-bool drawModeEnabled = true;
+bool drawModeEnabled = false;
 
 //Draw Mode: 0 - point by point; 1 - line by line; 2 - full frame at once
 int draw_mode = 1;
@@ -153,8 +153,8 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 				blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
 
 				if (fs != 0) {
-					diff += (light->color * mat->GetDiffColor()) * (norm * l_dir);
-					spec += (light->color * mat->GetSpecColor()) * pow(blinn * norm, mat->GetShine());
+					diff += (light->color * mat->GetDiffColor()) * (max(0,norm * l_dir));
+					spec += (light->color * mat->GetSpecColor()) * pow(max(0,blinn * norm), mat->GetShine()); 
 				}
 			}
 		}
