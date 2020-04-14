@@ -41,7 +41,7 @@
 int light_grid = 1; // should be odd, for simplicity reasons
 
 //Antialiasing flag (also turns on the DOF)
-bool antialiasing = true;
+bool antialiasing = false;
 
 bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 
@@ -112,7 +112,6 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		else return scene->GetBackgroundColor();
 	}
 	else {
-		
 		Material* mat = min_obj->GetMaterial();
 		Color col  = Color();
 		Color diff = Color();

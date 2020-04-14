@@ -48,6 +48,10 @@ clamp(const double x, const double min, const double max) {
 	return (x < min ? min : (x > max ? max : x));
 }
 
+inline int
+clampint(const float x, const int min, const int max) {
+	return (x < min ? min : (x > max ? max : (int) round(x)));
+}
 
 // ---------------------------------------------------- rand_int
 // a wrapper for rand()
