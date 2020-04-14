@@ -43,6 +43,8 @@ bool antialiasing = true;
 
 bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 
+bool background = true;
+
 //Enable OpenGL drawing.  
 bool drawModeEnabled = true;
 
@@ -96,7 +98,8 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 	//no intersection -> return background
 	if (min_obj == NULL) {
-		return scene->GetSkyboxColor(ray);
+		if (background)	return scene->GetSkyboxColor(ray);
+		else return scene->GetBackgroundColor();
 	}
 	else {
 		
