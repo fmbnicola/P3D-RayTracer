@@ -5,8 +5,8 @@ void Grid::Build()
 	Vector p0 = find_min_bounds();
 	Vector p1 = find_max_bounds();
 
-	cout << p0.x << " " << p0.y << " " << p0.z << endl;
-	cout << p1.x << " " << p1.y << " " << p1.z << endl;
+	//cout << p0.x << " " << p0.y << " " << p0.z << endl;
+	//cout << p1.x << " " << p1.y << " " << p1.z << endl;
 
 	bbox = AABB(p0, p1);
 
@@ -64,6 +64,7 @@ void Grid::Build()
 					cells.at(index).push_back(obj);
 				}
 	}
+
 }
 
 bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
@@ -93,9 +94,11 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 		for (int i = 0; i < cell.size(); i++) {
 			obj = cell.at(i);
 
-			if (obj && obj->intercepts(ray, t)) {
-				min_t = t;
-				min_obj = obj;
+			if (obj->intercepts(ray, t)) {
+				if (t < min_t) {
+					min_t = t;
+					min_obj = obj;
+				}
 			}
 		}
 		
@@ -109,8 +112,9 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 			tx_next += dtx;
 			ix += ix_step;
 
-			if (ix == ix_stop)
+			if (ix == ix_stop) {
 				return false;
+			}
 
 		}
 		else if (ty_next < tz_next) {
@@ -123,9 +127,10 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 			ty_next += dty;
 			iy += iy_step;
 
-			if (iy == iy_stop)
+			if (iy == iy_stop) {
 				return false;
 			}
+		}
 		else {
 			if (min_obj != NULL && min_t < tz_next) {
 				*hitobject = min_obj;
@@ -136,8 +141,9 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 			tz_next += dtz;
 			iz += iz_step;
 
-			if (iz == iz_stop)
+			if (iz == iz_stop) {
 				return false;
+			}
 		}
 	}
 }
@@ -177,7 +183,7 @@ Vector Grid::find_max_bounds(void)
 {
 	float kEpsilon = 0.0001;
 	Vector bbox_max;
-	Vector p1 = Vector(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	Vector p1 = Vector(FLT_MIN, FLT_MIN, FLT_MIN);
 	int num_objects = getNumObjects();
 
 	// find min
@@ -204,24 +210,6 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	Vector dir = ray.direction;
 	Vector bbox_min = bbox.min;
 	Vector bbox_max = bbox.max;
-
-	//Calculate Starting Cell
-	//int ix, iy, iz; 
-	if (bbox.isInside(o)) { // does the ray start inside the grid?
-		ix = clamp((o.x - bbox_min.x) * nx / (bbox_max.x - bbox_min.x), 0, nx - 1);
-		iy = clamp((o.y - bbox_min.y) * ny / (bbox_max.y - bbox_min.y), 0, ny - 1);
-		iz = clamp((o.z - bbox_min.z) * nz / (bbox_max.z - bbox_min.z), 0, nz - 1);
-	} else {
-		float t;
-		if (!bbox.intercepts(ray, t)) {
-			return false;
-		}
-
-		Vector p = o + dir * t; // initial hit point with grid’s BB
-		ix = clamp((p.x - bbox_min.x) * nx / (bbox_max.x - bbox_min.x), 0, nx - 1);
-		iy = clamp((p.y - bbox_min.y) * ny / (bbox_max.y - bbox_min.y), 0, ny - 1);
-		iz = clamp((p.z - bbox_min.z) * nz / (bbox_max.z - bbox_min.z), 0, nz - 1);
-	}
 	
 	// Where the rain intersets the bbox
 	float tx_min = (bbox_min.x - o.x) / ray.direction.x;
@@ -247,6 +235,20 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 
 	if (t0 > t1 || t1 < 0) { //crossover: ray disjoint the Grid’s BB OR leaving point is behind the ray origin
 		return false;
+	}
+
+	//Calculate Starting Cell
+	//int ix, iy, iz; 
+	if (bbox.isInside(o)) { // does the ray start inside the grid?
+		ix = clamp((o.x - bbox_min.x) * nx / (bbox_max.x - bbox_min.x), 0, nx - 1);
+		iy = clamp((o.y - bbox_min.y) * ny / (bbox_max.y - bbox_min.y), 0, ny - 1);
+		iz = clamp((o.z - bbox_min.z) * nz / (bbox_max.z - bbox_min.z), 0, nz - 1);
+	}
+	else {
+		Vector p = o + dir * t0; // initial hit point with grid’s BB
+		ix = clamp((p.x - bbox_min.x) * nx / (bbox_max.x - bbox_min.x), 0, nx - 1);
+		iy = clamp((p.y - bbox_min.y) * ny / (bbox_max.y - bbox_min.y), 0, ny - 1);
+		iz = clamp((p.z - bbox_min.z) * nz / (bbox_max.z - bbox_min.z), 0, nz - 1);
 	}
 
 	float dx = dir.x;

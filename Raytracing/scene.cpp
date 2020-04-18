@@ -16,8 +16,45 @@ Triangle::Triangle(Vector& P0, Vector& P1, Vector& P2)
 	normal.normalize();
 
 	//Calculate the Min and Max for bounding box
-	Min = Vector(+FLT_MAX, +FLT_MAX, +FLT_MAX);
-	Max = Vector(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	float x0, y0, z0, x1, y1, z1;
+	if (P0.x < P1.x) {
+		x0 = P0.x;
+		x1 = P1.x;
+	}
+	else {
+		x0 = P1.x;
+		x1 = P0.x;
+	}
+
+	if (P2.x < x0) x0 = P2.x;
+	if (P2.x > x1) x1 = P2.x;
+
+	if (P0.y < P1.y) {
+		y0 = P0.y;
+		y1 = P1.y;
+	}
+	else {
+		y0 = P1.y;
+		y1 = P0.y;
+	}
+
+	if (P2.y < y0) y0 = P2.y;
+	if (P2.y > y1) y1 = P2.y;
+
+	if (P0.z < P1.z) {
+		z0 = P0.z;
+		z1 = P1.z;
+	}
+	else {
+		z0 = P1.z;
+		z1 = P0.z;
+	}
+
+	if (P2.z < z0) x0 = P2.z;
+	if (P2.z > z1) x1 = P2.z;
+
+	Min = Vector(x0, y0, z0);
+	Max = Vector(x1, y1, z1);
 
 
 	// enlarge the bounding box a bit just in case...

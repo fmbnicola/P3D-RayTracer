@@ -32,7 +32,7 @@
 
 #define MAX_DEPTH 4
 
-#define SPP 3
+#define SPP 5
 
 #define LIGHT_SIDE 1.0f
 
@@ -48,10 +48,10 @@ bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 bool background = true;
 
 //Enable OpenGL drawing.  
-bool drawModeEnabled = false;
+bool drawModeEnabled = true;
 
 //Draw Mode: 0 - point by point; 1 - line by line; 2 - full frame at once
-int draw_mode = 1;
+int draw_mode = 0;
 
 // Points defined by 2 attributes: positions which are stored in vertices array and colors which are stored in colors array
 float *colors;
@@ -91,7 +91,12 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 	float min_t = FLT_MAX;
 
 	if (USING_GRID) {
-		grid.Traverse(ray, &min_obj, hit_p);
+		if (!grid.Traverse(ray, &min_obj, hit_p)) {
+			min_obj = NULL;
+		}
+		else {
+			return Color(1, 0, 0);
+		}
 	}
 	else {
 		//iterate through all objects in scene to check for interception

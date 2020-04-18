@@ -84,6 +84,7 @@ public:
 
 protected:
 	Material* m_Material;
+	AABB* bbox = NULL;
 	
 };
 
