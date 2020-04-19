@@ -32,26 +32,36 @@
 
 #define MAX_DEPTH 4
 
-#define SPP 5
+#define SPP 10
 
-#define LIGHT_SIDE 1.0f
+#define LIGHT_SIDE .9f
 
 #define USING_GRID true
+#define SOFT_SHADOWS true
 
-int light_grid = 1; // should be odd, for simplicity reasons
+// hard color for intersections test
+bool test_intersect = false;
+
+// sample unit disk? (false for jitter sample)
+bool sample_disk = true;
 
 //Antialiasing flag (also turns on the DOF)
-bool antialiasing = false;
+bool antialiasing = true;
 
+//Depth of field flag
 bool depthOfField = true; //for DOF to work, antialiasing must be true as well
 
+//background color (true -> skybox; false->background_color)
 bool background = true;
 
+// ray Counter
+uint64_t rayCounter = 0;
+
 //Enable OpenGL drawing.  
-bool drawModeEnabled = true;
+bool drawModeEnabled = false;
 
 //Draw Mode: 0 - point by point; 1 - line by line; 2 - full frame at once
-int draw_mode = 0;
+int draw_mode = 1;
 
 // Points defined by 2 attributes: positions which are stored in vertices array and colors which are stored in colors array
 float *colors;
@@ -94,9 +104,6 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		if (!grid.Traverse(ray, &min_obj, hit_p)) {
 			min_obj = NULL;
 		}
-		else {
-			return Color(1, 0, 0);
-		}
 	}
 	else {
 		//iterate through all objects in scene to check for interception
@@ -122,6 +129,8 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		Color diff = Color();
 		Color spec = Color();
 
+		if (test_intersect)	return Color(1, 0, 0);
+
 		Light* light = NULL;
 
 		Vector l_dir, norm, blinn;
@@ -139,7 +148,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 				light = scene->getLight(i);
 
-				if (antialiasing) {
+				if (antialiasing && SOFT_SHADOWS) {
 					Vector pos = Vector(
 						light->position.x + LIGHT_SIDE*(off_x + rand_float()) / SPP, 
 						light->position.y + LIGHT_SIDE*(off_y + rand_float()) / SPP,
@@ -151,15 +160,24 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 				}
 
 				Ray feeler = Ray(intercept, l_dir);
+				feeler.id = ++rayCounter;
 				fs = 1;
 				// intersect the shadow ray with each object in the scene
-				for (int j = 0; j < scene->getNumObjects(); j++) {
 
-					obj = scene->getObject(j);
+				if (!USING_GRID) {
+					for (int j = 0; j < scene->getNumObjects(); j++) {
 
-					if (obj->intercepts(feeler, t)) {
-						fs = 0; //is in shadow
-						break;
+						obj = scene->getObject(j);
+
+						if (obj->intercepts(feeler, t)) {
+							fs = 0; //is in shadow
+							break;
+						}
+					}
+				}
+				else {
+					if (grid.Traverse(feeler)) {
+						fs = 0;
 					}
 				}
 
@@ -175,7 +193,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 		col += diff * mat->GetDiffuse() + spec * mat->GetSpecular();
 
-		if (depth <= 0) return col;
+		if (depth <= 0) return col.clamp();
 
 		// refraction and reflected components
 		norm = !inside ? norm : norm * -1;
@@ -205,6 +223,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 				Vector interceptin = offsetIntersection(interceptNotPrecise, refractDir);
 
 				Ray refractedRay = Ray(interceptin, refractDir);
+				refractedRay.id = ++rayCounter;
 
 				float newior = !inside ? mat->GetRefrIndex() : 1; //MAGIC NUMBER
 				//rayTracing(...)
@@ -224,6 +243,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 			Vector rdir = norm * ((ray.getDirection() * -1) * norm) * 2 + ray.getDirection(); // 2(V*n)*n-V; V=-ray
 
 			Ray rray = Ray(intercept, rdir);
+			rray.id = ++rayCounter;
 
 			//rayTracing(...)
 			reflCol = rayTracing(rray, depth - 1, ior_1, off_x, off_y, inside);
@@ -429,23 +449,25 @@ void renderScene()
 
 	set_rand_seed(time(NULL) * time(NULL));
 
-	if ((light_grid > 1) && (!antialiasing)) {
+	if (!antialiasing && SOFT_SHADOWS) {
+		vector<Light*> new_lights;
+		float step = LIGHT_SIDE / SPP;
+		float start = -LIGHT_SIDE / 2 + step / 2;
+		float end = LIGHT_SIDE / 2;
+
 		int limit = scene->getNumLights();
 		for (int k = 0; k < limit; k++) {
 			Light* light = scene->getLight(k);
-			light->color = light->color / (light_grid * light_grid);
-			float step = LIGHT_SIDE / light_grid;
-			float start = floor((LIGHT_SIDE * 10.0f) / 2) /10;
+			Color avg_col = light->color / (SPP * SPP);
 
-			for (float i = -start; i < (start + step); i += step) {
-				for (float j = -0.2f; j < (0.2f + step); j += step) {
-					if (!(i == 0 && j == 0)) {
-						Vector pos = Vector(light->position.x + i, light->position.y + j, light->position.z);
-						scene->addLight(new Light(pos, light->color));
-					}
+			for (float i = start; i < end; i += step) {
+				for (float j = start; j < end; j += step) {
+					Vector pos = Vector(light->position.x + i, light->position.y + j, light->position.z);
+					new_lights.push_back(new Light(pos, avg_col));
 				}
 			}
 		}
+		scene->setLights(new_lights);
 	}
 
 	for (int y = 0; y < RES_Y; y++)
@@ -464,13 +486,18 @@ void renderScene()
 
 						Ray *ray = nullptr;
 						if (depthOfField) {
-							lens.x = (i + rand_float()) / SPP;
-							lens.y = (j + rand_float()) / SPP;
+							if (sample_disk) lens = sample_unit_disk();
+							else {
+								lens.x = (i + rand_float()) / SPP;
+								lens.y = (j + rand_float()) / SPP;
+							}
 							ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
 						}
 						else ray = &scene->GetCamera()->PrimaryRay(pixel);
 
-						color += rayTracing(*ray, 5, 1.0, i, j);
+						ray->id = ++rayCounter;
+
+						color += rayTracing(*ray, MAX_DEPTH, 1.0, i, j);
 					}
 				}
 
@@ -481,7 +508,9 @@ void renderScene()
 				pixel.y = y + 0.5;
 
 				Ray ray = scene->GetCamera()->PrimaryRay(pixel);
-				color += rayTracing(ray, 5, 1.0, 0, 0);
+				ray.id = ++rayCounter;
+
+				color += rayTracing(ray, MAX_DEPTH, 1.0, 0, 0);
 			}
 
 			

@@ -16,46 +16,16 @@ Triangle::Triangle(Vector& P0, Vector& P1, Vector& P2)
 	normal.normalize();
 
 	//Calculate the Min and Max for bounding box
-	float x0, y0, z0, x1, y1, z1;
-	if (P0.x < P1.x) {
-		x0 = P0.x;
-		x1 = P1.x;
-	}
-	else {
-		x0 = P1.x;
-		x1 = P0.x;
-	}
+	float x0 = min(min(P0.x, P1.x), P2.x);
+	float y0 = min(min(P0.y, P1.y), P2.y);
+	float z0 = min(min(P0.z, P1.z), P2.z);
 
-	if (P2.x < x0) x0 = P2.x;
-	if (P2.x > x1) x1 = P2.x;
-
-	if (P0.y < P1.y) {
-		y0 = P0.y;
-		y1 = P1.y;
-	}
-	else {
-		y0 = P1.y;
-		y1 = P0.y;
-	}
-
-	if (P2.y < y0) y0 = P2.y;
-	if (P2.y > y1) y1 = P2.y;
-
-	if (P0.z < P1.z) {
-		z0 = P0.z;
-		z1 = P1.z;
-	}
-	else {
-		z0 = P1.z;
-		z1 = P0.z;
-	}
-
-	if (P2.z < z0) x0 = P2.z;
-	if (P2.z > z1) x1 = P2.z;
+	float x1 = max(max(P0.x, P1.x), P2.x);
+	float y1 = max(max(P0.y, P1.y), P2.y);
+	float z1 = max(max(P0.z, P1.z), P2.z);
 
 	Min = Vector(x0, y0, z0);
 	Max = Vector(x1, y1, z1);
-
 
 	// enlarge the bounding box a bit just in case...
 	Min -= EPSILON;
@@ -76,6 +46,12 @@ Vector Triangle::getNormal(Vector point)
 //
 
 bool Triangle::intercepts(Ray& ray, float& time) {
+	pair<uint64_t, long> mBox = getMailbox();
+	if (mBox.first == ray.id) {
+		if (mBox.second == -1) return false;
+		time = mBox.second;
+		return true;
+	}
 
 	Vector P0 = points[0], P1 = points[1], P2 = points[2];
 
@@ -91,29 +67,37 @@ bool Triangle::intercepts(Ray& ray, float& time) {
 	float e1 = d * m - b * n - c * p;
 	float beta = e1 * inv_denom;
 
-	if (beta < 0.0)
+	if (beta < 0.0) {
+		setMailbox(pair<uint64_t, float>(ray.id, -1));
 		return (false);
+	}
 
 	float r = r = e * l - h * i;
 	float e2 = a * n + d * q + c * r;
 	float gamma = e2 * inv_denom;
 
-	if (gamma < 0.0)
+	if (gamma < 0.0) {
+		setMailbox(pair<uint64_t, float>(ray.id, -1));
 		return (false);
+	}
 
-	if (beta + gamma > 1.0)
+	if (beta + gamma > 1.0) {
+		setMailbox(pair<uint64_t, float>(ray.id, -1));
 		return (false);
+	}
 
 	float e3 = a * p - b * r + d * s;
 	float t = e3 * inv_denom;
 
-	if (t < 0.0001)
+	if (t < 0.0001) {
+		setMailbox(pair<uint64_t, float>(ray.id, -1));
 		return (false);
+	}
 
 	time = t;
 	//sr.normal = normal;
 	//sr.local_hit_point = ray.origin + t * ray.direction;
-
+	setMailbox(pair<uint64_t, float>(ray.id, t));
 	return (true);
 }
 
@@ -140,16 +124,30 @@ Plane::Plane(Vector& P0, Vector& P1, Vector& P2)
 
 bool Plane::intercepts(Ray& r, float& t)
 {
+	pair<uint64_t, long> mBox = getMailbox();
+	if (mBox.first == r.id) {
+		if (mBox.second == -1) return false;
+		t = mBox.second;
+		return true;
+	}
+
 	float numer = (r.origin - A) * PN;
 	float divid = PN * r.direction;
 
 	if (fabs(divid) < 0.0001) {
+		setMailbox(pair<uint64_t, float>(r.id, -1));
 		return false;
 	}
 
 	t = - (numer / divid);
+	
+	if (t <= 0) {
+		setMailbox(pair<uint64_t, float>(r.id, -1));
+		return false;
+	}
 
-	return (t > 0);
+	setMailbox(pair<uint64_t, float>(r.id, t));
+	return (true);
 }
 
 
@@ -161,7 +159,14 @@ Vector Plane::getNormal(Vector point)
 
 bool Sphere::intercepts(Ray& r, float& t)
 {
-	Vector Rd = r.direction;
+	pair<uint64_t, long> mBox = getMailbox();
+	if ((false) && (mBox.first == r.id)) { // FIXME mailbox not working for spheres
+		if (mBox.second == -1) return false;
+		t = mBox.second;
+		return (true);
+	}
+
+	Vector Rd = r.getDirection();
 
 	Vector co = (center - r.origin);
 
@@ -172,12 +177,18 @@ bool Sphere::intercepts(Ray& r, float& t)
 	float c = doc2 - radius * radius;
 
 	if (c > 0) {
-		if (b < 0) return false;
+		if (b < 0) {
+			setMailbox(pair<uint64_t, float>(r.id, -1));
+			return false;
+		}
 	}
 
 	float discriminant = (b * b - c);
 
-	if (discriminant < 0.0001) return false;
+	if (discriminant < 0) {
+		setMailbox(pair<uint64_t, float>(r.id, -1));
+		return false;
+	}
 
 	if (c > 0) {
 		t = b - sqrt(discriminant);
@@ -186,7 +197,8 @@ bool Sphere::intercepts(Ray& r, float& t)
 		t = b + sqrt(discriminant);
 	}
 
-	return true;
+	setMailbox(pair<uint64_t, float>(r.id, t));
+	return (true);
 }
 
 
@@ -214,9 +226,19 @@ AABB aaBox::GetBoundingBox() {
 
 bool aaBox::intercepts(Ray& ray, float& t)
 {
-	if (this->GetBoundingBox().intercepts(ray, t)) {
+	pair<uint64_t, long> mBox = getMailbox();
+	if (mBox.first == ray.id) {
+		if (mBox.second == -1) return false;
+		t = mBox.second;
 		return true;
 	}
+
+	if (this->GetBoundingBox().intercepts(ray, t)) {
+		setMailbox(pair<uint64_t, float>(ray.id, t));
+		return true;
+	}
+
+	setMailbox(pair<uint64_t, float>(ray.id, -1));
 	return false;
 }
 

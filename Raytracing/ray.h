@@ -11,6 +11,7 @@ public:
 	Vector origin;
 	Vector direction;
 	int i, j;
+	uint64_t id;
 
 	Vector getDirection() {
 		return direction.normalize();

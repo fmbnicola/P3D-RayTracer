@@ -80,7 +80,7 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 	if (!Init_Traverse(ray, ix, iy, iz, dtx, dty, dtz, tx_next, ty_next, tz_next, ix_step, iy_step, iz_step, ix_stop, iy_stop, iz_stop)) {
 		return false;
 	}
-
+	
 	vector<Object*> cell;
 	Object* obj, *min_obj;
 
@@ -102,7 +102,7 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 			}
 		}
 		
-		if (tx_next < ty_next && ty_next < tz_next) {
+		if (tx_next < ty_next && tx_next < tz_next) {
 			if (min_obj != NULL && min_t < tx_next) {
 				*hitobject = min_obj;
 				hitpoint = ray.origin + ray.direction * min_t;
@@ -150,7 +150,61 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 
 bool Grid::Traverse(Ray& ray)
 {
-	return false;
+	int ix, iy, iz; //starting cell indices
+	double tx_next, ty_next, tz_next;
+	double dtx, dty, dtz;
+	int ix_step, iy_step, iz_step;
+	int ix_stop, iy_stop, iz_stop;
+	float t, min_t;
+
+	if (!Init_Traverse(ray, ix, iy, iz, dtx, dty, dtz, tx_next, ty_next, tz_next, ix_step, iy_step, iz_step, ix_stop, iy_stop, iz_stop)) {
+		return false;
+	}
+
+	vector<Object*> cell;
+	Object* obj, * min_obj;
+
+	while (true) {
+		min_obj = NULL;
+		t = FLT_MAX;
+		min_t = FLT_MAX;
+
+		cell = cells.at(ix + nx * iy + nx * ny * iz);
+
+		for (int i = 0; i < cell.size(); i++) {
+			obj = cell.at(i);
+
+			if (obj->intercepts(ray, t)) {
+				return true;
+			}
+		}
+
+		if (tx_next < ty_next && tx_next < tz_next) {
+			tx_next += dtx;
+			ix += ix_step;
+
+			if (ix == ix_stop) {
+				return false;
+			}
+
+		}
+		else if (ty_next < tz_next) {
+			ty_next += dty;
+			iy += iy_step;
+
+			if (iy == iy_stop) {
+				return false;
+			}
+		}
+		else {
+			tz_next += dtz;
+			iz += iz_step;
+
+			if (iz == iz_stop) {
+				return false;
+			}
+		}
+	}
 }
 
 
@@ -225,17 +279,19 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	if (ty_min > ty_max) swap(ty_max, ty_min);
 	if (tz_min > tz_max) swap(tz_max, tz_min);
 
+	//check entering and exiting bounding box t's
 	float t0 = max(max(tx_min, ty_min), tz_min);
 	float t1 = min(min(tx_max, ty_max), tz_max);
 	
-	// ray parameter increments per cell in the x, y, and z directions
-	dtx = (tx_max - tx_min) / nx;
-	dty = (ty_max - ty_min) / ny;
-	dtz = (tz_max - tz_min) / nz;
 
 	if (t0 > t1 || t1 < 0) { //crossover: ray disjoint the Grid’s BB OR leaving point is behind the ray origin
 		return false;
 	}
+
+	// ray parameter increments per cell in the x, y, and z directions
+	dtx = (tx_max - tx_min) / nx;
+	dty = (ty_max - ty_min) / ny;
+	dtz = (tz_max - tz_min) / nz;
 
 	//Calculate Starting Cell
 	//int ix, iy, iz; 

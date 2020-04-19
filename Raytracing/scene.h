@@ -81,10 +81,13 @@ public:
 	virtual bool intercepts( Ray& r, float& dist ) = 0;
 	virtual Vector getNormal( Vector point ) = 0;
 	virtual AABB GetBoundingBox() { return AABB(); }
+	pair<uint64_t, float> getMailbox() { return mailbox; };
+	void setMailbox(pair<uint64_t, float> mBox) { mailbox = mBox; }
 
 protected:
 	Material* m_Material;
 	AABB* bbox = NULL;
+	pair<uint64_t, float> mailbox = pair<uint64_t, float>(0,-1);
 	
 };
 
@@ -173,6 +176,7 @@ public:
 	int getNumLights( );
 	void addLight( Light* l );
 	Light* getLight( unsigned int index );
+	void setLights(vector<Light*> new_lights) { lights = new_lights; }
 
 	bool load_p3f(const char *name);  //Load NFF file method
 	

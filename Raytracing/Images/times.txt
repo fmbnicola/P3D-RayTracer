@@ -1,0 +1,9 @@
+depth = 4
+
+no anti, soft shadows (balls_high):
+- no grid = 91.42 s
+- grid = 5.26 s
+
+balls_low (soft)
+- no anti:
+- anti:

@@ -7,6 +7,7 @@ using namespace std;
 
 #include "vector.h"
 #include "ray.h"
+#include "sampler.h"
 
 
 #define PI				3.141592653589793238462f
