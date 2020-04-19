@@ -32,7 +32,7 @@
 
 #define MAX_DEPTH 4
 
-#define SPP 10
+#define SPP 5
 
 #define LIGHT_SIDE .9f
 

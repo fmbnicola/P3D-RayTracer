@@ -84,10 +84,11 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 	vector<Object*> cell;
 	Object* obj, *min_obj;
 
+	min_obj = NULL;
+	min_t = FLT_MAX;
+	t = FLT_MAX;
+
 	while (true) {
-		min_obj = NULL;
-		t = FLT_MAX;
-		min_t = FLT_MAX;
 
 		cell = cells.at(ix + nx * iy + nx * ny * iz);
 
@@ -165,10 +166,6 @@ bool Grid::Traverse(Ray& ray)
 	Object* obj, * min_obj;
 
 	while (true) {
-		min_obj = NULL;
-		t = FLT_MAX;
-		min_t = FLT_MAX;
-
 		cell = cells.at(ix + nx * iy + nx * ny * iz);
 
 		for (int i = 0; i < cell.size(); i++) {

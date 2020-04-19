@@ -81,13 +81,11 @@ public:
 	virtual bool intercepts( Ray& r, float& dist ) = 0;
 	virtual Vector getNormal( Vector point ) = 0;
 	virtual AABB GetBoundingBox() { return AABB(); }
-	pair<uint64_t, float> getMailbox() { return mailbox; };
-	void setMailbox(pair<uint64_t, float> mBox) { mailbox = mBox; }
 
 protected:
 	Material* m_Material;
 	AABB* bbox = NULL;
-	pair<uint64_t, float> mailbox = pair<uint64_t, float>(0,-1);
+	uint64_t mailbox = 0;
 	
 };
 
