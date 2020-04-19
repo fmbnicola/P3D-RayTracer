@@ -21,6 +21,9 @@ using namespace std;
 ? ( ( a ) > ( c ) ? ( a ) : ( c ) ) \
 : ( ( b ) > ( c ) ? ( b ) : ( c ) ) )
 
+// use mailboxes
+#define USE_MAIL true
+
 //Skybox images constant symbolics
 typedef enum { RIGHT, LEFT, TOP, BOTTOM, FRONT, BACK } CubeMap;
 

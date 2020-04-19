@@ -46,8 +46,10 @@ Vector Triangle::getNormal(Vector point)
 //
 
 bool Triangle::intercepts(Ray& ray, float& time) {
-	if ((false) && (mailbox >= ray.id)) return false;
-	mailbox = ray.id;
+	if (USE_MAIL) {
+		if (mailbox >= ray.id) return false;
+		mailbox = ray.id;
+	}
 
 	Vector P0 = points[0], P1 = points[1], P2 = points[2];
 
@@ -115,8 +117,10 @@ Plane::Plane(Vector& P0, Vector& P1, Vector& P2)
 
 bool Plane::intercepts(Ray& r, float& t)
 {
-	if (false && (mailbox >= r.id)) return false;
-	mailbox = r.id;
+	if (USE_MAIL) {
+		if (mailbox >= r.id) return false;
+		mailbox = r.id;
+	}
 
 	float numer = (r.origin - A) * PN;
 	float divid = PN * r.direction;
@@ -143,8 +147,10 @@ Vector Plane::getNormal(Vector point)
 
 bool Sphere::intercepts(Ray& r, float& t)
 {
-	if (false && (mailbox >= r.id)) return false;
-	mailbox = r.id;
+	if (USE_MAIL) {
+		if (mailbox >= r.id) return false;
+		mailbox = r.id;
+	}
 
 	Vector Rd = r.getDirection();
 
@@ -203,8 +209,10 @@ AABB aaBox::GetBoundingBox() {
 
 bool aaBox::intercepts(Ray& ray, float& t)
 {
-	if (false && (mailbox >= ray.id)) return false;
-	mailbox = ray.id;
+	if (USE_MAIL) {
+		if (mailbox >= ray.id) return false;
+		mailbox = ray.id;
+	}
 
 	if (this->GetBoundingBox().intercepts(ray, t)) {
 		return true;

@@ -46,7 +46,7 @@ bool test_intersect = false;
 bool sample_disk = true;
 
 //Antialiasing flag (also turns on the DOF)
-bool antialiasing = true;
+bool antialiasing = false;
 
 //Depth of field flag
 bool depthOfField = true; //for DOF to work, antialiasing must be true as well
