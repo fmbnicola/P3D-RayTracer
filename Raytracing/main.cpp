@@ -34,7 +34,7 @@
 #define COLOR_ATTRIB 1
 
 //Number of bounces of secondary rays
-#define MAX_DEPTH 4
+#define MAX_DEPTH 3
 
 //Grid Aceleration Structure
 #define USING_GRID true
@@ -42,8 +42,8 @@
 //Shadow type (true -> Soft Shadows, false->hard shadows)
 #define SOFT_SHADOWS true
 
-//Sample per Pixel (in truth this is the sqrt spp)
-#define SPP 5
+//Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
+#define SPP 6
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .9f
@@ -70,7 +70,7 @@
 uint64_t rayCounter = 0;
 
 //Enable OpenGL drawing.  
-bool drawModeEnabled = false;
+bool drawModeEnabled = true;
 
 //Draw Mode: 0 - point by point; 1 - line by line; 2 - full frame at once
 int draw_mode = 1;
@@ -193,7 +193,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 				fs = 1;
 
 				//check for interceptions of feelers
-				if (!USING_GRID) {
+				if (USING_GRID) {
 					if (grid.Traverse(feeler)) {
 						fs = 0; //is in shadow
 					}

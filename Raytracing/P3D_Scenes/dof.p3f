@@ -7,7 +7,7 @@ up 0 1 0
 angle 45
 hither 1.0
 resolution 512 512
-aperture 30
+aperture 10
 focal 1.01
 l 4 3 2 1 1 1
 l 1 -4 4 1 1 1
