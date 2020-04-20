@@ -25,36 +25,47 @@
 #include "maths.h"
 #include "sampler.h"
 
+
+#pragma region MACROS
+
 #define CAPTION "Whitted Ray-Tracer"
 
 #define VERTEX_COORD_ATTRIB 0
 #define COLOR_ATTRIB 1
 
+//Number of bounces of secondary rays
 #define MAX_DEPTH 4
 
-#define SPP 5
-
-#define LIGHT_SIDE .9f
-
+//Grid Aceleration Structure
 #define USING_GRID true
+
+//Shadow type (true -> Soft Shadows, false->hard shadows)
 #define SOFT_SHADOWS true
 
-// hard color for intersections test
-bool test_intersect = false;
+//Sample per Pixel (in truth this is the sqrt spp)
+#define SPP 5
 
-// sample unit disk? (false for jitter sample)
-bool sample_disk = true;
+//size of the side of the light jitter
+#define LIGHT_SIDE .9f
+
+//Hard colors for intersections test
+#define TEST_INTERSECT false
+
+//Sample unit disk? (false for normal jitter)
+#define SAMPLE_DISK true
 
 //Antialiasing flag (also turns on the DOF)
-bool antialiasing = false;
+#define ANTIALIASING false
 
-//Depth of field flag
-bool depthOfField = true; //for DOF to work, antialiasing must be true as well
+//Depth of field flag (for DOF to work, antialiasing must be true as well)
+#define DEPTH_OF_FIELD true
 
-//background color (true -> skybox; false->background_color)
-bool background = true;
+//background color (true -> skybox; false -> background_color)
+#define SKYBOX true
 
-// ray Counter
+#pragma endregion MACROS
+
+// ray Counter (to use for Mailboxing)
 uint64_t rayCounter = 0;
 
 //Enable OpenGL drawing.  
@@ -87,11 +98,15 @@ int RES_X, RES_Y;
 
 int WindowHandle = 0;
 
+/////////////////////////////////////////////////////////////////////// RAYTRACING
+
+//Auxiliary function -> calculates adjusted intersection point
 Vector offsetIntersection(Vector inter, Vector normal) {
 	return  inter + normal * .0001;
 }
 
-Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool inside = false)  //index of refraction of medium 1 where the ray is travelling
+//Main ray tracing function (index of refraction of medium 1 where the ray is travelling)
+Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool inside = false)  
 {
 	Object* obj     = NULL;
 	Object* min_obj = NULL;
@@ -101,6 +116,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 	float min_t = FLT_MAX;
 
 	if (USING_GRID) {
+		//Traverse grid one cell at a time
 		if (!grid.Traverse(ray, &min_obj, hit_p)) {
 			min_obj = NULL;
 		}
@@ -120,7 +136,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 	//no intersection -> return background
 	if (min_obj == NULL) {
-		if (background)	return scene->GetSkyboxColor(ray);
+		if (SKYBOX)	return scene->GetSkyboxColor(ray);
 		else return scene->GetBackgroundColor();
 	}
 	else {
@@ -129,7 +145,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		Color diff = Color();
 		Color spec = Color();
 
-		if (test_intersect)	return Color(1, 0, 0);
+		if (TEST_INTERSECT)	return Color(1, 0, 0);
 
 		Light* light = NULL;
 
@@ -148,7 +164,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 				light = scene->getLight(i);
 
-				if (antialiasing && SOFT_SHADOWS) {
+				if (ANTIALIASING && SOFT_SHADOWS) {
 					Vector pos = Vector(
 						light->position.x + LIGHT_SIDE*(off_x + rand_float()) / SPP, 
 						light->position.y + LIGHT_SIDE*(off_y + rand_float()) / SPP,
@@ -348,7 +364,6 @@ void destroyShaderProgram()
 
 /////////////////////////////////////////////////////////////////////// VAOs & VBOs
 
-
 void createBufferObjects()
 {
 	glGenVertexArrays(1, &VaoId);
@@ -432,25 +447,29 @@ ILuint saveImgFile(const char *filename) {
 /////////////////////////////////////////////////////////////////////// CALLBACKS
 
 // Render function by primary ray casting from the eye towards the scene's objects
-
 void renderScene()
 {
 	int index_pos=0;
 	int index_col=0;
 	unsigned int counter = 0;
 
-	// Set up the grid with the object from the scene
-	grid = Grid();
+	// Set up the grid with all objects from the scene
+	if (USING_GRID) {
 
-	for (int o = 0; o < scene->getNumObjects(); o++) {
-		grid.addObject(scene->getObject(o));
+		grid = Grid();
+
+		for (int o = 0; o < scene->getNumObjects(); o++) {
+			grid.addObject(scene->getObject(o));
+		}
+
+		grid.Build();
 	}
-
-	grid.Build();
 
 	set_rand_seed(time(NULL) * time(NULL));
 
-	if (!antialiasing && SOFT_SHADOWS) {
+	//For softshadows without antialiasing we replicate each light multiple times
+	if (!ANTIALIASING && SOFT_SHADOWS) {
+		
 		vector<Light*> new_lights;
 		float step = LIGHT_SIDE / SPP;
 		float start = -LIGHT_SIDE / 2 + step / 2;
@@ -479,15 +498,20 @@ void renderScene()
 			Vector pixel;  //viewport coordinates
 			Vector lens;   //lens coords
 
-			if (antialiasing) {
+			//Antialiasing -> shoot multiple rays per pixel
+			if (ANTIALIASING) {
 				for (int i = 0; i < SPP; i++) {
 					for (int j = 0; j < SPP; j++) {
 						pixel.x = x + (i + rand_float()) / SPP;
 						pixel.y = y + (j + rand_float()) / SPP;
 
 						Ray *ray = nullptr;
-						if (depthOfField) {
-							if (sample_disk) lens = sample_unit_disk();
+
+						//DOF -> Rays are not shot from the same point but instead from a "lens"
+						if (DEPTH_OF_FIELD) {
+
+							//Sample disk -> alternative to jitering that displaces rays in a circle
+							if (SAMPLE_DISK) lens = sample_unit_disk();
 							else {
 								lens.x = (i + rand_float()) / SPP;
 								lens.y = (j + rand_float()) / SPP;
@@ -504,6 +528,7 @@ void renderScene()
 
 				color = color / (SPP * SPP);
 			}
+			//No Antialiasing -> single ray per pixel
 			else {
 				pixel.x = x + 0.5;
 				pixel.y = y + 0.5;
@@ -514,10 +539,7 @@ void renderScene()
 				color += rayTracing(ray, MAX_DEPTH, 1.0, 0, 0);
 			}
 
-			
-
-			//color = scene->GetBackgroundColor(); //just for the template
-
+			//Create Image
 			img_Data[counter++] = u8fromfloat((float)color.r());
 			img_Data[counter++] = u8fromfloat((float)color.g());
 			img_Data[counter++] = u8fromfloat((float)color.b());
@@ -539,6 +561,7 @@ void renderScene()
 				}
 			}
 		}
+		
 		if (draw_mode == 1 && drawModeEnabled) {  // drawing line by line
 			drawPoints();
 			index_pos = 0;
@@ -649,7 +672,6 @@ void setupGLUT(int argc, char* argv[])
 	}
 }
 
-
 void init(int argc, char* argv[])
 {
 	setupGLUT(argc, argv);
@@ -661,7 +683,6 @@ void init(int argc, char* argv[])
 	setupCallbacks();
 	
 }
-
 
 void init_scene(void)
 {
