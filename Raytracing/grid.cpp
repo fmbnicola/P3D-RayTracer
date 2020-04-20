@@ -2,38 +2,38 @@
 
 void Grid::Build()
 {
+
+	// Find the grid bounds
 	Vector p0 = find_min_bounds();
 	Vector p1 = find_max_bounds();
-
-	//cout << p0.x << " " << p0.y << " " << p0.z << endl;
-	//cout << p1.x << " " << p1.y << " " << p1.z << endl;
 
 	bbox = AABB(p0, p1);
 
 	Vector w = p1 - p0; //grid dim
+
 	int num_obj = getNumObjects();
 	float s = powf(num_obj / (w.x * w.y * w.z), 1 / 3);
+
+	// Number of cells in each coordinate
 	nx = trunc(m * w.x * s) + 1;
 	ny = trunc(m * w.y * s) + 1;
 	nz = trunc(m * w.z * s) + 1;
 
 	int cell_num = nx * ny * nz; // = m**3 * num_obj
 
+	// Init cell vector
+	// Cells stored as 1D array of length Nx * Ny * Nz
+	// Array index of cell(ix, iy, iz) is index = ix + Nx * iy + Nx * Ny * iz
 	for (int c = 0; c < cell_num; c++) {
 		cells.push_back(vector<Object*>());
 	}
 
-	//Cells stored as 1D array of length Nx * Ny * Nz
-	/*Array index of cell(ix		iy		iz) is
-		Index = ix + Nx * iy + Nx * Ny * iz*/
-
-	AABB obj_bbox;
-	Object* obj;
+	AABB obj_bbox; Object* obj;
 	for (int j = 0; j < num_obj; j++) {
 		obj = getObject(j);
 		obj_bbox = obj->GetBoundingBox();
 
-		/* Compute indices of both cells that contain min and max coord of obj bbox */
+		// Compute indices of both cells that contain min and max coord of obj bbox
 		int ixmin = clamp(
 			(obj_bbox.min.x - p0.x) * nx / (p1.x - p0.x),
 			0, nx - 1);
@@ -56,7 +56,7 @@ void Grid::Build()
 
 		int index;
 
-	/* insert obj to the overlaped cells */
+	// insert obj to the overlaped cells
 		for (int iz = izmin; iz <= izmax; iz++)
 			for (int iy = iymin; iy <= iymax; iy++)
 				for (int ix = ixmin; ix <= ixmax; ix++) {
@@ -69,8 +69,8 @@ void Grid::Build()
 
 bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 {
-	
-	int ix, iy, iz; //starting cell indices
+	//starting cell indices
+	int ix, iy, iz;
 	double tx_next, ty_next, tz_next;
 	double dtx, dty, dtz;
 	int ix_step, iy_step, iz_step;
@@ -158,8 +158,9 @@ bool Grid::Traverse(Ray& ray)
 	int ix_stop, iy_stop, iz_stop;
 	float t, min_t;
 
+	// Find the start cell of the ray, in which direction it will travel and how much and for how long
 	if (!Init_Traverse(ray, ix, iy, iz, dtx, dty, dtz, tx_next, ty_next, tz_next, ix_step, iy_step, iz_step, ix_stop, iy_stop, iz_stop)) {
-		return false;
+		return false; // If not inside box
 	}
 
 	vector<Object*> cell;
@@ -262,7 +263,7 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	Vector bbox_min = bbox.min;
 	Vector bbox_max = bbox.max;
 	
-	// Where the rain intersets the bbox
+	// Where the ray intersets the bbox
 	float tx_min = (bbox_min.x - o.x) / ray.direction.x;
 	float ty_min = (bbox_min.y - o.y) / ray.direction.y;
 	float tz_min = (bbox_min.z - o.z) / ray.direction.z;
@@ -271,12 +272,12 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	float ty_max = (bbox_max.y - o.y) / ray.direction.y;
 	float tz_max = (bbox_max.z - o.z) / ray.direction.z;
 
-	// Check if one is bigger
+	// May be inverted: max must me bigger in value
 	if (tx_min > tx_max) swap(tx_max, tx_min);
 	if (ty_min > ty_max) swap(ty_max, ty_min);
 	if (tz_min > tz_max) swap(tz_max, tz_min);
 
-	//check entering and exiting bounding box t's
+	// Find the entering and exiting bounding box t's
 	float t0 = max(max(tx_min, ty_min), tz_min);
 	float t1 = min(min(tx_max, ty_max), tz_max);
 	
@@ -322,7 +323,9 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	}
 
 	if (dx == 0.0) {
-		tx_next = FLT_MAX; //WHY?
+		// Next cell will never be found with this coordinate
+		// because ray is paralel to the axis
+		tx_next = FLT_MAX;
 	}
 
 	//Possible cases for direction yy’:
@@ -338,7 +341,9 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	}
 
 	if (dy == 0.0) {
-		ty_next = FLT_MAX; //WHY?
+		// Next cell will never be found with this coordinate
+		// because ray is paralel to the axis
+		ty_next = FLT_MAX;
 	}
 
 	//Possible cases for direction zz’:
@@ -354,7 +359,9 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	}
 
 	if (dz == 0.0) {
-		tz_next = FLT_MAX; //WHY?
+		// Next cell will never be found with this coordinate
+		// because ray is paralel to the axis
+		tz_next = FLT_MAX;
 	}
 
 	return true;

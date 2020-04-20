@@ -439,6 +439,7 @@ void renderScene()
 	int index_col=0;
 	unsigned int counter = 0;
 
+	// Set up the grid with the object from the scene
 	grid = Grid();
 
 	for (int o = 0; o < scene->getNumObjects(); o++) {
