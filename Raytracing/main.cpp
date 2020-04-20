@@ -65,6 +65,7 @@
 
 #pragma endregion MACROS
 
+
 // ray Counter (to use for Mailboxing)
 uint64_t rayCounter = 0;
 
@@ -106,7 +107,7 @@ Vector offsetIntersection(Vector inter, Vector normal) {
 }
 
 //Main ray tracing function (index of refraction of medium 1 where the ray is travelling)
-Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool inside = false)  
+Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool inside = false)
 {
 	Object* obj     = NULL;
 	Object* min_obj = NULL;
@@ -114,6 +115,8 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 	float t     = FLT_MAX; 
 	float min_t = FLT_MAX;
+
+	#pragma region ======== GEOMETRY INTERSECTION ========
 
 	if (USING_GRID) {
 		//Traverse grid one cell at a time
@@ -133,18 +136,22 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 			}
 		}
 	}
+	
+	#pragma endregion
 
 	//no intersection -> return background
 	if (min_obj == NULL) {
 		if (SKYBOX)	return scene->GetSkyboxColor(ray);
 		else return scene->GetBackgroundColor();
 	}
+	//interception -> calculate color
 	else {
 		Material* mat = min_obj->GetMaterial();
 		Color col  = Color();
 		Color diff = Color();
 		Color spec = Color();
 
+		//debug option, for checking intersections
 		if (TEST_INTERSECT)	return Color(1, 0, 0);
 
 		Light* light = NULL;
@@ -158,12 +165,17 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 		norm = min_obj->getNormal(intercept);
 
+		#pragma region ======== SHADOWS ======== 
+
+		//disregard shadows for rays traveling inside mesh
 		if (!inside) {
+
 			// cast a shadow ray for every light in the scene
 			for (int i = 0; i < scene->getNumLights(); i++) {
 
 				light = scene->getLight(i);
 
+				//for antialising + soft shadows cast the multiple rays in the direction of each light (with jitering)
 				if (ANTIALIASING && SOFT_SHADOWS) {
 					Vector pos = Vector(
 						light->position.x + LIGHT_SIDE*(off_x + rand_float()) / SPP, 
@@ -175,12 +187,18 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 					l_dir = (light->position - intercept).normalize();
 				}
 
+				// Shadow Feelers 
 				Ray feeler = Ray(intercept, l_dir);
 				feeler.id = ++rayCounter;
 				fs = 1;
-				// intersect the shadow ray with each object in the scene
 
+				//check for interceptions of feelers
 				if (!USING_GRID) {
+					if (grid.Traverse(feeler)) {
+						fs = 0; //is in shadow
+					}
+				}
+				else {
 					for (int j = 0; j < scene->getNumObjects(); j++) {
 
 						obj = scene->getObject(j);
@@ -191,13 +209,8 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 						}
 					}
 				}
-				else {
-					if (grid.Traverse(feeler)) {
-						fs = 0;
-					}
-				}
 
-				//add each lights contribution to output 
+				//if not in shadow -> add add each lights contribution to output (specular and diffuse components) 
 				blinn = ((l_dir + (ray.getDirection() * -1)) / 2).normalize();
 
 				if (fs != 0) {
@@ -207,11 +220,15 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 			}
 		}
 
+		#pragma endregion
+
+		//add diffuse and specular components of the material to output
 		col += diff * mat->GetDiffuse() + spec * mat->GetSpecular();
 
 		if (depth <= 0) return col.clamp();
 
-		// refraction and reflected components
+		#pragma region ======== REFRACTION ======== 
+
 		norm = !inside ? norm : norm * -1;
 		float Kr;
 
@@ -221,12 +238,14 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		Color refrCol = Color(), reflCol = Color();
 
 		if (mat->GetTransmittance() == 0) {
+
+			//opaque material
 			Kr = mat->GetSpecular();
 		}
 		else {
 			float Rs = 1, Rp = 1;
 
-			float n = !inside ? ior_1 / mat->GetRefrIndex() : ior_1 / 1; //MAGIC NUMBER
+			float n = !inside ? ior_1 / mat->GetRefrIndex() : ior_1 / 1;
 
 			float cosOi = vn.length();
 			float sinOt = (n) * vt.length(), cosOt;
@@ -235,6 +254,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 			if (insqrt >= 0) {
 				cosOt = sqrt(insqrt);
 
+				//Refraction Secondary Rays
 				Vector refractDir = (vt.normalize() * sinOt + norm * (-cosOt)).normalize();
 				Vector interceptin = offsetIntersection(interceptNotPrecise, refractDir);
 
@@ -245,26 +265,35 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 				//rayTracing(...)
 				refrCol = rayTracing(refractedRay, depth - 1, newior, off_x, off_y, !inside);
 
-				Rs = pow(fabs((ior_1 * cosOi - newior * cosOt) / (ior_1 * cosOi + newior * cosOt)), 2);
-				Rp = pow(fabs((ior_1 * cosOt - newior * cosOi) / (ior_1 * cosOt + newior * cosOi)), 2);
+				//Frenel Equations
+				Rs = pow(fabs((ior_1 * cosOi - newior * cosOt) / (ior_1 * cosOi + newior * cosOt)), 2); //s-polarized (normal)
+				Rp = pow(fabs((ior_1 * cosOt - newior * cosOi) / (ior_1 * cosOt + newior * cosOi)), 2); //p-polarized (tangent)
 			}
 
+			//ratio of reflected ligth
 			Kr = 1 / 2 * (Rs + Rp);
-
 		}
+
+		#pragma endregion
+
+		#pragma region ======== REFLECTION ======== 
 
 		//if reflective
 		if (mat->GetReflection() > 0) {
+			
 			//throw ray in direction of reflection
 			Vector rdir = norm * ((ray.getDirection() * -1) * norm) * 2 + ray.getDirection(); // 2(V*n)*n-V; V=-ray
 
 			Ray rray = Ray(intercept, rdir);
 			rray.id = ++rayCounter;
 
-			//rayTracing(...)
+			//get color contribution from ray
 			reflCol = rayTracing(rray, depth - 1, ior_1, off_x, off_y, inside);
-		}
+		}		
 
+		#pragma endregion
+
+		//Add Reflection and refraction color to output
 		col += reflCol * Kr + refrCol * (1 - Kr);
 
 		return col.clamp();
