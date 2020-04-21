@@ -280,8 +280,8 @@ bool Grid::Init_Traverse(Ray& ray, int& ix, int& iy, int& iz, double& dtx, doubl
 	if (tz_min > tz_max) swap(tz_max, tz_min);
 
 	// Find the entering and exiting bounding box t's
-	float t0 = max(max(tx_min, ty_min), tz_min);
-	float t1 = min(min(tx_max, ty_max), tz_max);
+	float t0 = MAX3(tx_min, ty_min, tz_min);
+	float t1 = MIN3(tx_max, ty_max, tz_max);
 	
 
 	if (t0 > t1 || t1 < 0) { //crossover: ray disjoint the Grid’s BB OR leaving point is behind the ray origin

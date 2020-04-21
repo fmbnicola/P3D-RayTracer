@@ -1,5 +1,6 @@
 #include "vector.h"
 #include "boundingBox.h"
+#include "scene.h"
 
 //-------------------------------------------------------------------- - default constructor
 AABB::AABB(void) 
@@ -86,33 +87,12 @@ bool AABB::intercepts(const Ray& ray, float& t)
 	float t0, t1;
 
 	//largest entering t value
-	if (tx_min > ty_min) {
-		t0 = tx_min;
-	}
-	else {
-		t0 = ty_min;
-	}
-
-	if (tz_min > t0) 
-		t0 = tz_min;
+	t0 = MAX3(tx_min, ty_min, tz_min);
 
 	//smallest exiting t value
-	if (tx_max < ty_max) {
-		t1 = tx_max;
-	}
-	else {
-		t1 = ty_max;
-	}
-
-	if (tz_max < t1)
-		t1 = tz_max;
+	t1 = MIN3(tx_max, ty_max, tz_max);
 	
-	if (t0 < 0) {
-		t = t1;
-	}
-	else {
-		t = t0;
-	}
+	t = (t0 < 0) ? t1 : t0;
 
 	return (t0 < t1 && t1 > 0.0001);
 }
