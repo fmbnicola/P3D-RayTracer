@@ -40,10 +40,10 @@
 #define USING_GRID true
 
 //Shadow type (true -> Soft Shadows, false->hard shadows)
-#define SOFT_SHADOWS false
+#define SOFT_SHADOWS true
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 3
+#define SPP 15
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .9f
@@ -52,10 +52,10 @@
 #define TEST_INTERSECT false
 
 //Sample unit disk? (false for normal jitter)
-#define SAMPLE_DISK true
+#define SAMPLE_DISK false
 
 //Antialiasing flag (also turns on the DOF)
-#define ANTIALIASING false
+#define ANTIALIASING true
 
 //Depth of field flag (for DOF to work, antialiasing must be true as well)
 #define DEPTH_OF_FIELD true
