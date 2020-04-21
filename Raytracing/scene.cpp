@@ -7,6 +7,8 @@
 #include "scene.h"
 
 
+// ======== TRIANGLE METHODS ========
+
 Triangle::Triangle(Vector& P0, Vector& P1, Vector& P2)
 {
 	points[0] = P0; points[1] = P1; points[2] = P2;
@@ -41,10 +43,7 @@ Vector Triangle::getNormal(Vector point)
 	return normal;
 }
 
-//
 // Ray/Triangle intersection test using Tomas Moller-Ben Trumbore algorithm.
-//
-
 bool Triangle::intercepts(Ray& ray, float& time) {
 	if (USE_MAIL) {
 		if (mailbox >= ray.id) return false;
@@ -94,6 +93,11 @@ bool Triangle::intercepts(Ray& ray, float& time) {
 	return (true);
 }
 
+
+
+
+// ======== PLANE METHODS ========
+
 Plane::Plane(Vector& a_PN, Vector a_A)
 	: PN(a_PN), A(a_A)
 {}
@@ -111,10 +115,7 @@ Plane::Plane(Vector& P0, Vector& P1, Vector& P2)
 	A = P0;
 }
 
-//
 // Ray/Plane intersection test.
-//
-
 bool Plane::intercepts(Ray& r, float& t)
 {
 	if (USE_MAIL) {
@@ -138,12 +139,15 @@ bool Plane::intercepts(Ray& r, float& t)
 	return (true);
 }
 
-
 Vector Plane::getNormal(Vector point)
 {
 	return PN;
 }
 
+
+
+
+// ======== SPHERE METHODS ========
 
 bool Sphere::intercepts(Ray& r, float& t)
 {
@@ -184,7 +188,6 @@ bool Sphere::intercepts(Ray& r, float& t)
 	return (true);
 }
 
-
 Vector Sphere::getNormal(Vector point)
 {
 	Vector normal = point - center;
@@ -196,6 +199,11 @@ AABB Sphere::GetBoundingBox() {
 	Vector a_max = (center + Vector(radius, radius, radius));
 	return(AABB(a_min, a_max));
 }
+
+
+
+
+// ======== AABB METHODS ========
 
 aaBox::aaBox(Vector& minPoint, Vector& maxPoint) //Axis aligned Box: another geometric object
 {
@@ -260,6 +268,12 @@ Vector aaBox::getNormal(Vector point)
 
 	return norm;
 }
+
+
+
+
+
+// ======== SCENE METHODS ========
 
 Scene::Scene()
 {}
