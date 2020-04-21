@@ -203,7 +203,7 @@ AABB Sphere::GetBoundingBox() {
 
 
 
-// ======== AABB METHODS ========
+// ======== AABOX METHODS ========
 
 aaBox::aaBox(Vector& minPoint, Vector& maxPoint) //Axis aligned Box: another geometric object
 {

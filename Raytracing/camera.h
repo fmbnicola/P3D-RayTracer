@@ -99,7 +99,7 @@ public:
 
 		//Updated point
 		Vector p;
-		p.x = ps.x * focal_ratio;
+		p.x = ps.x * focal_ratio;  //focal_ratio = focalplane_dist / viewplane_dist
 		p.y = ps.y * focal_ratio;
 
 		//calculate ray direction

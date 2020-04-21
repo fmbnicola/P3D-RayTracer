@@ -67,6 +67,7 @@ void Grid::Build()
 
 }
 
+//Traverse throught the grid find object the was hit 
 bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 {
 	//starting cell indices
@@ -149,6 +150,7 @@ bool Grid::Traverse(Ray& ray, Object** hitobject, Vector& hitpoint)
 	}
 }
 
+//Traverse used for feeler rays (where we only care if there is intersection or not)
 bool Grid::Traverse(Ray& ray)
 {
 	int ix, iy, iz; //starting cell indices

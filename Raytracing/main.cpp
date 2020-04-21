@@ -232,9 +232,10 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		norm = !inside ? norm : norm * -1;
 		float Kr;
 
-		Vector v = ray.getDirection() * -1;
-		Vector vn = (norm * (v * norm));
-		Vector vt = vn - v;
+		Vector v = ray.getDirection() * -1; //view
+		Vector vn = (norm * (v * norm)); //viewnormal
+		Vector vt = vn - v; //viewtangent
+
 		Color refrCol = Color(), reflCol = Color();
 
 		if (mat->GetTransmittance() == 0) {
@@ -245,6 +246,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		else {
 			float Rs = 1, Rp = 1;
 
+			//refraction index (snell law)
 			float n = !inside ? ior_1 / mat->GetRefrIndex() : ior_1 / 1;
 
 			float cosOi = vn.length();
@@ -266,11 +268,11 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 				refrCol = rayTracing(refractedRay, depth - 1, newior, off_x, off_y, !inside);
 
 				//Frenel Equations
-				Rs = pow(fabs((ior_1 * cosOi - newior * cosOt) / (ior_1 * cosOi + newior * cosOt)), 2); //s-polarized (normal)
-				Rp = pow(fabs((ior_1 * cosOt - newior * cosOi) / (ior_1 * cosOt + newior * cosOi)), 2); //p-polarized (tangent)
+				Rs = pow(fabs((ior_1 * cosOi - newior * cosOt) / (ior_1 * cosOi + newior * cosOt)), 2); //s-polarized (perpendicular)
+				Rp = pow(fabs((ior_1 * cosOt - newior * cosOi) / (ior_1 * cosOt + newior * cosOi)), 2); //p-polarized (parallel)
 			}
 
-			//ratio of reflected ligth
+			//ratio of reflected ligth (mirror reflection attenuation)
 			Kr = 1 / 2 * (Rs + Rp);
 		}
 
@@ -293,7 +295,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 		#pragma endregion
 
-		//Add Reflection and refraction color to output
+		//Add Reflection and refraction color to output 
 		col += reflCol * Kr + refrCol * (1 - Kr);
 
 		return col.clamp();
