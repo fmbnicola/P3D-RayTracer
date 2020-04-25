@@ -55,13 +55,15 @@
 #define SAMPLE_DISK false
 
 //Antialiasing flag (also turns on the DOF)
-#define ANTIALIASING true
+#define ANTIALIASING false
 
 //Depth of field flag (for DOF to work, antialiasing must be true as well)
-#define DEPTH_OF_FIELD true
+#define DEPTH_OF_FIELD false
 
 //background color (true -> skybox; false -> background_color)
 #define SKYBOX true
+
+#define DEPTH_MAP true
 
 #pragma endregion MACROS
 
@@ -106,6 +108,11 @@ Vector offsetIntersection(Vector inter, Vector normal) {
 	return  inter + normal * .0001;
 }
 
+float remap(float min1, float max1, float min2, float max2, float value) {
+
+	return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
+}
+
 //Main ray tracing function (index of refraction of medium 1 where the ray is travelling)
 Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool inside = false)
 {
@@ -136,9 +143,23 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 			}
 		}
 	}
+
+	//Depth map
+	if (!USING_GRID && DEPTH_MAP) {
+		
+		//cerr << min_t << "\n";
+
+		float min_depth = 5;
+		float max_depth = 20;
+		float depth = remap(min_depth, max_depth, 1.f, 0.f, min_t);
+
+		Color color = Color(depth, depth, depth).clamp();
+
+		return color;
+	}
 	
 	#pragma endregion
-
+	
 	//no intersection -> return background
 	if (min_obj == NULL) {
 		if (SKYBOX)	return scene->GetSkyboxColor(ray);
