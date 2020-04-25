@@ -37,16 +37,16 @@
 #define MAX_DEPTH 3
 
 //Grid Aceleration Structure
-#define USING_GRID true
+#define USING_GRID false
 
 //Shadow type (true -> Soft Shadows, false->hard shadows)
 #define SOFT_SHADOWS true
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 15
+#define SPP 5
 
 //size of the side of the light jitter
-#define LIGHT_SIDE .9f
+#define LIGHT_SIDE .5f
 
 //Hard colors for intersections test
 #define TEST_INTERSECT false
