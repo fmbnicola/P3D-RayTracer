@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <cfloat>
+
 using namespace std;
 
 class Vector
@@ -15,6 +16,7 @@ public:
 
 	float length();
 	float sqrdLength();
+
 	Vector&	normalize();
 	Vector operator=(const Vector& v);
 	Vector operator+( const Vector& v );

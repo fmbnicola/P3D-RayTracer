@@ -36,10 +36,10 @@ class Material
 public:
 	
 	Material() :
-		m_diffColor(Color(0.2f, 0.2f, 0.2f)), m_Diff( 0.2f ), m_specColor(Color(1.0f, 1.0f, 1.0f)), m_Spec( 0.8f ), m_Shine(20), m_Refl( 1.0f ), m_T( 0.0f ), m_RIndex( 1.0f ){};
+		m_diffColor(Color(0.2f, 0.2f, 0.2f)), m_Diff( 0.2f ), m_specColor(Color(1.0f, 1.0f, 1.0f)), m_Spec( 0.8f ), m_Shine(20), m_Refl( 1.0f ), m_T( 0.0f ), m_RIndex( 1.0f ), m_E(Color(0,0,0)){};
 
-	Material (Color& c, float Kd, Color& cs, float Ks, float Shine, float T, float ior) {
-		m_diffColor = c; m_Diff = Kd; m_specColor = cs; m_Spec = Ks; m_Shine = Shine; m_Refl = Ks; m_T = T; m_RIndex = ior;
+	Material (Color& c, float Kd, Color& cs, float Ks, float Shine, float T, float ior, Color& E) {
+		m_diffColor = c; m_Diff = Kd; m_specColor = cs; m_Spec = Ks; m_Shine = Shine; m_Refl = Ks; m_T = T; m_RIndex = ior; m_E = E;
 	}
 
 	void SetDiffColor( Color& a_Color ) { m_diffColor = a_Color; }
@@ -58,8 +58,13 @@ public:
 	float GetTransmittance() { return m_T; }
 	void SetRefrIndex( float a_ior ) { m_RIndex = a_ior; }
 	float GetRefrIndex() { return m_RIndex; }
+
+	//Emission (for materials that emit light )
+	Color GetEmission() { return m_E; }
+	void SetEmission(Color e) { m_E = e; }
+
 private:
-	Color m_diffColor, m_specColor;
+	Color m_diffColor, m_specColor, m_E;
 	float m_Refl, m_T;
 	float m_Diff, m_Shine, m_Spec;
 	float m_RIndex;
@@ -133,9 +138,18 @@ public:
 	Vector getNormal(Vector point);
 	AABB GetBoundingBox(void);
 
+	Vector GetCenter() {
+		return center;
+	}
+
+	float GetRadius() {
+		return radius;
+	}
+
 private:
 	Vector center;
 	float radius, SqRadius;
+
 };
 
 class aaBox : public Object   //Axis aligned box: another geometric object

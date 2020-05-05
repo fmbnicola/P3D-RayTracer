@@ -488,11 +488,11 @@ bool Scene::load_p3f(const char* name)
 			if (cmd == "f")   //Material
 			{
 				double Kd, Ks, Shine, T, ior;
-				Color cd, cs;
+				Color cd, cs, em;
 
-				file >> cd >> Kd >> cs >> Ks >> Shine >> T >> ior;
+				file >> cd >> Kd >> cs >> Ks >> Shine >> T >> ior >> em;
 
-				material = new Material(cd, Kd, cs, Ks, Shine, T, ior);
+				material = new Material(cd, Kd, cs, Ks, Shine, T, ior, em);
 			}
 
 			else if (cmd == "s")    //Sphere

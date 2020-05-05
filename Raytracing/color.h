@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <cfloat>
+
 using namespace std;
 
 #define CLAMP(a, b, c)		(((b) < (a)) ? (a) : (((b) > (c)) ? (c) : (b)))
@@ -42,6 +43,7 @@ public:
         					CLAMP(0.0, B, 1.0));
         			}
 
+  float sum() const { return R + G + B;}
 
   Color 	operator *	(float c) 
         			{ return Color(R*c, G*c, B*c); }

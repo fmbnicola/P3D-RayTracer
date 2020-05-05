@@ -97,3 +97,5 @@ Vector Vector::operator%( const Vector& v)
 
 	return Vector( sX, sY, sZ );
 }
+
+

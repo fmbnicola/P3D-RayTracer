@@ -34,16 +34,16 @@
 #define COLOR_ATTRIB 1
 
 //Number of bounces of secondary rays
-#define MAX_DEPTH 3
+#define MAX_DEPTH 10
 
 //Grid Aceleration Structure
 #define USING_GRID false
 
 //Shadow type (true -> Soft Shadows, false->hard shadows)
-#define SOFT_SHADOWS true
+#define SOFT_SHADOWS false
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 5
+#define SPP 2
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .5f
@@ -55,7 +55,7 @@
 #define SAMPLE_DISK false
 
 //Antialiasing flag (also turns on the DOF)
-#define ANTIALIASING false
+#define ANTIALIASING true
 
 //Depth of field flag (for DOF to work, antialiasing must be true as well)
 #define DEPTH_OF_FIELD false
@@ -63,7 +63,9 @@
 //background color (true -> skybox; false -> background_color)
 #define SKYBOX true
 
-#define DEPTH_MAP true
+#define DEPTH_MAP false
+
+#define PATHTRACING true
 
 #pragma endregion MACROS
 
@@ -100,6 +102,11 @@ Grid grid;
 int RES_X, RES_Y;
 
 int WindowHandle = 0;
+
+
+double erand48(unsigned short xsubi[3]) {
+	return (double)rand() / (double) RAND_MAX;
+}
 
 /////////////////////////////////////////////////////////////////////// RAYTRACING
 
@@ -323,6 +330,180 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 	}
 }
 
+/////////////////////////////////////////////////////////////////////// PATHTRACING
+
+Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned short* seed, int emissive = 1, bool inside = false) {
+
+	Object* obj = NULL;
+	Object* min_obj = NULL;
+	Vector hit_p;
+
+	float t = FLT_MAX;
+	float min_t = FLT_MAX;
+
+	#pragma region === GEOMETRY INTERSECTION ===
+
+	if (USING_GRID) {
+		//Traverse grid one cell at a time
+		if (!grid.Traverse(ray, &min_obj, hit_p)) {
+			min_obj = NULL;
+		}
+	}
+	else {
+		//iterate through all objects in scene to check for interception
+		for (int i = 0; i < scene->getNumObjects(); i++) {
+
+			obj = scene->getObject(i);
+
+			if (obj->intercepts(ray, t) && (t < min_t)) {
+				min_obj = obj;
+				min_t = t;
+			}
+		}
+	}
+
+	#pragma endregion
+
+	#pragma region === GET MATERIAL PROPERTIES ===
+
+	//if no intersection return background
+	if (min_obj == NULL) {
+		if (SKYBOX)	return scene->GetSkyboxColor(ray);
+		else return scene->GetBackgroundColor();
+	}
+
+	Material* mat = min_obj->GetMaterial();
+	Color col = mat->GetDiffColor();
+
+	//debug option, for checking intersections
+	if (TEST_INTERSECT)	return Color(1, 0, 0);
+
+	Light* light = NULL;
+
+	Vector norm, norml;
+	float fs;
+
+	Vector interceptNotPrecise = (!USING_GRID) ? ray.origin + ray.direction * min_t : hit_p;
+
+	norm = min_obj->getNormal(interceptNotPrecise);
+	//properly oriented normal
+	norml = (norm * ray.direction < 0) ? norm : norm * -1; //FIXME : make sure this is right
+
+	//fixes floating point errors in intersection
+	Vector intercept = offsetIntersection(interceptNotPrecise, norml);
+	
+#pragma endregion
+
+	//Russian Roulette
+	double p = MAX3(col.r(), col.g(), col.b());
+
+	if ((--depth <= (int)MAX_DEPTH / 2) &&
+		(erand48(seed) < p)) {
+
+		col = col * (1 / p);
+	}
+	else return mat->GetEmission() * emissive;
+
+	//Ideal diffuse reflection
+	if (mat->GetDiffuse()) {
+
+		double r1 = 2 * PI * erand48(seed);
+		double r2 = erand48(seed);
+		double r2s = sqrt(r2);
+
+		Vector w = norml;
+		Vector u = (((fabs(w.x) > .1) ? Vector(0, 1, 0) : Vector(1, 0, 0)) % w).normalize();
+
+		Vector v = w % u;
+		Vector d = (u*cos(r1) * r2s + v*sin(r1) * r2s + w*sqrt(1 - r2)).normalize();
+
+		Color e;
+		obj = NULL;
+		for (int i = 0; i < scene->getNumObjects(); i++) {
+
+			#pragma region === ITERATE THROUGH LIGHTS ===
+
+			obj = scene->getObject(i);
+			Color emi = obj->GetMaterial()->GetEmission();
+
+			//only care about the lights
+			if (emi.sum() < 0) continue;
+
+			Sphere* light = dynamic_cast<Sphere*> (obj);
+
+			//coordinate system for sampling
+			Vector sw = light->GetCenter() - intercept;
+			Vector su = ((fabs(sw.x) > .1 ? Vector(0, 1, 0) : Vector(1, 0, 0)) % sw).normalize();
+			Vector sv = sw % su;
+
+			//light center and radius
+			Vector center = light->GetCenter();
+			float rad = light->GetRadius();
+
+			//mas angle
+			double cos_a_max = sqrt(1 - pow(rad,2) / ((intercept - center) * (intercept - center)));
+			
+			//sample direction based on random numbers (according to Realist RayTracing)
+			double eps1 = erand48(seed);
+			double eps2 = erand48(seed);
+			double cos_a = 1 - eps1 + eps1 * cos_a_max;
+			double sin_a = sqrt(1 - cos_a * cos_a);
+			double phi = 2 * PI * eps2;
+
+			Vector l = su * cos(phi) * sin_a + sv * sin(phi) * sin_a + sw * cos_a;
+			l = l.normalize();
+
+			#pragma endregion
+
+
+			#pragma region === SHADOW FEELERS ===
+			
+			// Shadow Feeler
+			Ray feeler = Ray(intercept, l);
+			feeler.id = ++rayCounter;
+
+			//find shadow feeler interception
+			Object * obj2;
+			Object* min_obj2 = NULL;
+			Vector hit_p2;
+			float t2 = FLT_MAX;
+			float min_t2 = FLT_MAX;
+
+			if (USING_GRID) {
+				//Traverse grid one cell at a time
+				if (!grid.Traverse(ray, &min_obj2, hit_p2)) {
+					min_obj2 = NULL;
+				}
+			}
+			else {
+				//iterate through all objects in scene to check for interception
+				for (int j = 0; j < scene->getNumObjects(); j++) {
+
+					obj2 = scene->getObject(j);
+
+					if (obj2->intercepts(ray, t2) && (t2 < min_t2)) {
+						min_obj2 = obj2;
+						min_t2 = t2;
+					}
+				}
+			}
+
+			//if intersected (and not with the light itself)
+			if (min_obj2 != NULL && min_obj2 == obj) {//FIXME: make sure this is right
+				double omega = 2 * PI * (1 - cos_a_max);
+				e = e + col * (emi * (l * norml) * omega) * (1 / PI);
+			}
+			#pragma	endregion
+		}
+
+		Ray ray2 = Ray(intercept, d);
+
+		return min_obj->GetMaterial()->GetEmission() * emissive + e + col * Radiance(ray2, depth, ior_1, off_x, off_y, seed, 0);
+	}
+
+	return Color(1, 0, 0);
+}
+
 /////////////////////////////////////////////////////////////////////// ERRORS
 
 bool isOpenGLError() {
@@ -544,6 +725,8 @@ void renderScene()
 
 	for (int y = 0; y < RES_Y; y++)
 	{
+		unsigned short seed[3] = { 0,0,y * y * y }; //Generate seed for radiance
+
 		for (int x = 0; x < RES_X; x++)
 		{
 			Color color = Color(); 
@@ -574,7 +757,13 @@ void renderScene()
 
 						ray->id = ++rayCounter;
 
-						color += rayTracing(*ray, MAX_DEPTH, 1.0, i, j);
+						if (PATHTRACING) {
+							color += Radiance(*ray, MAX_DEPTH, 1.0, i, j, seed);
+						}
+						else{
+							color += rayTracing(*ray, MAX_DEPTH, 1.0, i, j);
+						}
+						
 					}
 				}
 
