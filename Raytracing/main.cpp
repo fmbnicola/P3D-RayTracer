@@ -343,47 +343,40 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 
 	#pragma region === GEOMETRY INTERSECTION ===
 
-	if (USING_GRID) {
-		//Traverse grid one cell at a time
-		if (!grid.Traverse(ray, &min_obj, hit_p)) {
-			min_obj = NULL;
+	//FIXME use grid in future
+
+	//iterate through all objects in scene to check for interception
+	for (int i = 0; i < scene->getNumObjects(); i++) {
+
+		obj = scene->getObject(i);
+
+		if (obj->intercepts(ray, t) && (t < min_t)) {
+			min_obj = obj;
+			min_t = t;
 		}
 	}
-	else {
-		//iterate through all objects in scene to check for interception
-		for (int i = 0; i < scene->getNumObjects(); i++) {
-
-			obj = scene->getObject(i);
-
-			if (obj->intercepts(ray, t) && (t < min_t)) {
-				min_obj = obj;
-				min_t = t;
-			}
-		}
-	}
-
+	
 	#pragma endregion
 
 	#pragma region === GET MATERIAL PROPERTIES ===
 
 	//if no intersection return background
-	if (min_obj == NULL) {
-		if (SKYBOX)	return scene->GetSkyboxColor(ray);
-		else return scene->GetBackgroundColor();
+	if (min_obj == NULL || depth == 0) {
+		if (SKYBOX) {
+			return scene->GetSkyboxColor(ray);
+		}
+		return scene->GetBackgroundColor();
 	}
 
-	Material* mat = min_obj->GetMaterial();
-	Color col = mat->GetDiffColor();
+	cout << "hit" << endl;
 
 	//debug option, for checking intersections
 	if (TEST_INTERSECT)	return Color(1, 0, 0);
 
-	Light* light = NULL;
-
 	Vector norm, norml;
 	float fs;
 
-	Vector interceptNotPrecise = (!USING_GRID) ? ray.origin + ray.direction * min_t : hit_p;
+	Vector interceptNotPrecise = ray.origin + ray.direction * min_t; // FIXME use grid
 
 	norm = min_obj->getNormal(interceptNotPrecise);
 	//properly oriented normal
@@ -391,43 +384,52 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 
 	//fixes floating point errors in intersection
 	Vector intercept = offsetIntersection(interceptNotPrecise, norml);
+
+	Material* mat = min_obj->GetMaterial();
+	Color f = mat->GetDiffColor();
 	
 #pragma endregion
 
 	//Russian Roulette
-	double p = MAX3(col.r(), col.g(), col.b());
+	float p = MAX3(f.r(), f.g(), f.b());
 
-	if ((--depth <= (int)MAX_DEPTH / 2) &&
-		(erand48(seed) < p)) {
-
-		col = col * (1 / p);
+	if (--depth <= (int) MAX_DEPTH / 2) {
+		if (rand_float() < p) {
+			f = f * (1 / p);
+		} else {
+			return mat->GetEmission();	// Emissive (in the powerpoints): try to find out
+										// working theories: serve para global illumination OU representa as luzes
+		}
 	}
-	else return mat->GetEmission() * emissive;
+
+	if (depth < MAX_DEPTH) {
+		cout << "here" << endl;
+	}
 
 	//Ideal diffuse reflection
-	if (mat->GetDiffuse()) {
-
-		double r1 = 2 * PI * erand48(seed);
-		double r2 = erand48(seed);
-		double r2s = sqrt(r2);
+	if (mat->GetDiffuse() == 1.0f) {
+		float r1 = 2 * PI * rand_float();
+		float r2 = rand_float();
+		float r2s = sqrt(r2);
 
 		Vector w = norml;
 		Vector u = (((fabs(w.x) > .1) ? Vector(0, 1, 0) : Vector(1, 0, 0)) % w).normalize();
 
 		Vector v = w % u;
-		Vector d = (u*cos(r1) * r2s + v*sin(r1) * r2s + w*sqrt(1 - r2)).normalize();
+		Vector d = (u * cos(r1) * r2s + v * sin(r1) * r2s + w * sqrt(1 - r2)).normalize();
 
-		Color e;
+		Ray new_r = Ray(intercept, d);
+
+		Color e = Color();
 		obj = NULL;
+
 		for (int i = 0; i < scene->getNumObjects(); i++) {
-
-			#pragma region === ITERATE THROUGH LIGHTS ===
-
+#pragma region === ITERATE THROUGH LIGHTS ===
 			obj = scene->getObject(i);
 			Color emi = obj->GetMaterial()->GetEmission();
 
 			//only care about the lights
-			if (emi.sum() < 0) continue;
+			if (emi.sum() <= 0) continue;
 
 			Sphere* light = dynamic_cast<Sphere*> (obj);
 
@@ -441,8 +443,8 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			float rad = light->GetRadius();
 
 			//mas angle
-			double cos_a_max = sqrt(1 - pow(rad,2) / ((intercept - center) * (intercept - center)));
-			
+			double cos_a_max = sqrt(1 - pow(rad, 2) / ((intercept - center) * (intercept - center)));
+
 			//sample direction based on random numbers (according to Realist RayTracing)
 			double eps1 = erand48(seed);
 			double eps2 = erand48(seed);
@@ -453,52 +455,35 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			Vector l = su * cos(phi) * sin_a + sv * sin(phi) * sin_a + sw * cos_a;
 			l = l.normalize();
 
-			#pragma endregion
-
-
-			#pragma region === SHADOW FEELERS ===
-			
-			// Shadow Feeler
 			Ray feeler = Ray(intercept, l);
 			feeler.id = ++rayCounter;
 
 			//find shadow feeler interception
-			Object * obj2;
+			Object* obj2;
 			Object* min_obj2 = NULL;
 			Vector hit_p2;
 			float t2 = FLT_MAX;
 			float min_t2 = FLT_MAX;
 
-			if (USING_GRID) {
-				//Traverse grid one cell at a time
-				if (!grid.Traverse(ray, &min_obj2, hit_p2)) {
-					min_obj2 = NULL;
-				}
-			}
-			else {
-				//iterate through all objects in scene to check for interception
-				for (int j = 0; j < scene->getNumObjects(); j++) {
+			//iterate through all objects in scene to check for interception
+			for (int j = 0; j < scene->getNumObjects(); j++) {
+				obj2 = scene->getObject(j);
 
-					obj2 = scene->getObject(j);
-
-					if (obj2->intercepts(ray, t2) && (t2 < min_t2)) {
-						min_obj2 = obj2;
-						min_t2 = t2;
-					}
+				if (obj2->intercepts(ray, t2) && (t2 < min_t2)) {
+					min_obj2 = obj2;
+					min_t2 = t2;
 				}
 			}
 
 			//if intersected (and not with the light itself)
 			if (min_obj2 != NULL && min_obj2 == obj) {//FIXME: make sure this is right
 				double omega = 2 * PI * (1 - cos_a_max);
-				e = e + col * (emi * (l * norml) * omega) * (1 / PI);
+				e = e + f * (emi * (l * norml) * omega) * (1 / PI);
 			}
-			#pragma	endregion
+
 		}
 
-		Ray ray2 = Ray(intercept, d);
-
-		return min_obj->GetMaterial()->GetEmission() * emissive + e + col * Radiance(ray2, depth, ior_1, off_x, off_y, seed, 0);
+		return mat->GetEmission() + e +  f * Radiance(new_r, depth, ior_1, off_x, off_y, seed);
 	}
 
 	return Color(1, 0, 0);
