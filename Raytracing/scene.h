@@ -22,7 +22,7 @@ using namespace std;
 : ( ( b ) > ( c ) ? ( b ) : ( c ) ) )
 
 // use mailboxes
-#define USE_MAIL true
+#define USE_MAIL false
 
 //Skybox images constant symbolics
 typedef enum { RIGHT, LEFT, TOP, BOTTOM, FRONT, BACK } CubeMap;

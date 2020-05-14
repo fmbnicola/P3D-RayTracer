@@ -368,7 +368,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 		return scene->GetBackgroundColor();
 	}
 
-	cout << "hit" << endl;
+	//cout << "hit" << endl;
 
 	//debug option, for checking intersections
 	if (TEST_INTERSECT)	return Color(1, 0, 0);
@@ -400,10 +400,6 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			return mat->GetEmission();	// Emissive (in the powerpoints): try to find out
 										// working theories: serve para global illumination OU representa as luzes
 		}
-	}
-
-	if (depth < MAX_DEPTH) {
-		cout << "here" << endl;
 	}
 
 	//Ideal diffuse reflection
