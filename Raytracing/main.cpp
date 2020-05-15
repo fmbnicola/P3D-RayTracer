@@ -37,13 +37,13 @@
 #define MAX_DEPTH 10
 
 //Grid Aceleration Structure
-#define USING_GRID false
+#define USING_GRID true
 
 //Shadow type (true -> Soft Shadows, false->hard shadows)
 #define SOFT_SHADOWS false
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 2
+#define SPP 5
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .5f
@@ -344,15 +344,20 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 	#pragma region === GEOMETRY INTERSECTION ===
 
 	//FIXME use grid in future
+	if (USING_GRID) {
+		if (!grid.Traverse(ray, &min_obj, hit_p)) 
+			min_obj == NULL;
+	}
+	else {
+		//iterate through all objects in scene to check for interception
+		for (int i = 0; i < scene->getNumObjects(); i++) {
 
-	//iterate through all objects in scene to check for interception
-	for (int i = 0; i < scene->getNumObjects(); i++) {
+			obj = scene->getObject(i);
 
-		obj = scene->getObject(i);
-
-		if (obj->intercepts(ray, t) && (t < min_t)) {
-			min_obj = obj;
-			min_t = t;
+			if (obj->intercepts(ray, t) && (t < min_t)) {
+				min_obj = obj;
+				min_t = t;
+			}
 		}
 	}
 	
@@ -376,7 +381,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 	Vector norm, norml;
 	float fs;
 
-	Vector interceptNotPrecise = ray.origin + ray.direction * min_t; // FIXME use grid
+	Vector interceptNotPrecise = (USING_GRID) ? hit_p : ray.origin + ray.direction * min_t; // FIXME use grid
 
 	norm = min_obj->getNormal(interceptNotPrecise);
 	//properly oriented normal
@@ -393,7 +398,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 	//Russian Roulette
 	float p = MAX3(f.r(), f.g(), f.b());
 
-	if (--depth <= (int) MAX_DEPTH / 2) {
+	if (--depth <= (int) MAX_DEPTH - 5) {
 		if (rand_float() < p) {
 			f = f * (1 / p);
 		} else {
@@ -479,7 +484,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 
 		}
 
-		return mat->GetEmission() + e +  f * Radiance(new_r, depth, ior_1, off_x, off_y, seed);
+		return (mat->GetEmission() + e +  f * Radiance(new_r, depth, ior_1, off_x, off_y, seed)).clamp();
 	}
 
 	return Color(1, 0, 0);
