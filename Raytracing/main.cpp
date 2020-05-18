@@ -43,7 +43,7 @@
 #define SOFT_SHADOWS false
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 5
+#define SPP 10
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .5f
@@ -102,7 +102,6 @@ Grid grid;
 int RES_X, RES_Y;
 
 int WindowHandle = 0;
-
 
 double erand48(unsigned short xsubi[3]) {
 	return (double)rand() / (double) RAND_MAX;
@@ -388,7 +387,8 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 	norml = (norm * ray.direction < 0) ? norm : norm * -1; //FIXME : make sure this is right
 
 	//fixes floating point errors in intersection
-	Vector intercept = offsetIntersection(interceptNotPrecise, norml);
+	Vector intercept_out = offsetIntersection(interceptNotPrecise, norm);
+	Vector intercept_in = offsetIntersection(interceptNotPrecise, norm * -1);
 
 	Material* mat = min_obj->GetMaterial();
 	Color f = mat->GetDiffColor();
@@ -419,7 +419,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 		Vector v = w % u;
 		Vector d = (u * cos(r1) * r2s + v * sin(r1) * r2s + w * sqrt(1 - r2)).normalize();
 
-		Ray new_r = Ray(intercept, d);
+		Ray new_r = Ray(intercept_out, d);
 
 		Color e = Color();
 		obj = NULL;
@@ -435,7 +435,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			Sphere* light = dynamic_cast<Sphere*> (obj);
 
 			//coordinate system for sampling
-			Vector sw = light->GetCenter() - intercept;
+			Vector sw = light->GetCenter() - intercept_out;
 			Vector su = ((fabs(sw.x) > .1 ? Vector(0, 1, 0) : Vector(1, 0, 0)) % sw).normalize();
 			Vector sv = sw % su;
 
@@ -444,7 +444,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			float rad = light->GetRadius();
 
 			//mas angle
-			double cos_a_max = sqrt(1 - pow(rad, 2) / ((intercept - center) * (intercept - center)));
+			double cos_a_max = sqrt(1 - pow(rad, 2) / ((intercept_out - center) * (intercept_out - center)));
 
 			//sample direction based on random numbers (according to Realist RayTracing)
 			double eps1 = erand48(seed);
@@ -456,7 +456,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			Vector l = su * cos(phi) * sin_a + sv * sin(phi) * sin_a + sw * cos_a;
 			l = l.normalize();
 
-			Ray feeler = Ray(intercept, l);
+			Ray feeler = Ray(intercept_out, l);
 			feeler.id = ++rayCounter;
 
 			//find shadow feeler interception
@@ -484,10 +484,43 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 
 		}
 
-		return (mat->GetEmission() + e +  f * Radiance(new_r, depth, ior_1, off_x, off_y, seed)).clamp();
+		return mat->GetEmission() + e +  f * Radiance(new_r, depth, ior_1, off_x, off_y, seed);
+	}
+	else if (mat->GetSpecular() == 1.0f) {
+		Ray new_r = Ray(intercept_out, ray.direction - norm * (2 * (norm * ray.direction)));
+		return mat->GetEmission() + f * Radiance(new_r, depth, ior_1, off_x, off_y, seed);
 	}
 
-	return Color(1, 0, 0);
+	Ray reflRay = Ray(intercept_out, ray.direction - norm * 2 * (norm * ray.direction)); // ideal dieletric Reflection
+	bool into = norm * norml > 0; // ray from outside?
+	double nc = 1.0f;
+	double nt = mat->GetRefrIndex();
+	double nnt = into ? nc / nt : nt / nc;
+	double ddn = ray.direction * norml;
+	double cos2t = 1 - nnt * nnt * (1 - ddn * ddn);
+
+	if (cos2t < 0) { // Total internal reflection
+		return mat->GetEmission() + f * Radiance(reflRay, depth, ior_1, off_x, off_y, seed);
+	}
+
+	Vector tdir = (ray.direction * nnt - norm * ((into ? 1 : -1) * (ddn * nnt + sqrt(cos2t)))).normalize();
+	double a = nt - nc;
+	double b = nt + nc;
+	double R0 = (a * a) / (b * b);
+	double c = 1 - (into ? -ddn : tdir * norm);
+	double Re = R0 + (1 - R0) * c * c * c * c * c;
+	double Tr = 1 - Re;
+	double P = 0.25 + 0.5 * Re;
+	double RP = Re / P;
+	double TP = Tr / (1 - P);
+
+	Color col = depth <= (MAX_DEPTH - 2) ? (erand48(seed) < P) ?
+		Radiance(reflRay, depth, ior_1, off_x, off_y, seed) * RP :
+		Radiance(Ray(intercept_out, tdir), depth, ior_1, off_x, off_y, seed) * TP :
+		Radiance(reflRay, depth, ior_1, off_x, off_y, seed) * Re + 
+			Radiance(Ray(intercept_in, tdir), depth, ior_1, off_x, off_y, seed) * Tr;
+
+	return mat->GetEmission() + f * col;
 }
 
 /////////////////////////////////////////////////////////////////////// ERRORS
@@ -723,37 +756,46 @@ void renderScene()
 			if (ANTIALIASING) {
 				for (int i = 0; i < SPP; i++) {
 					for (int j = 0; j < SPP; j++) {
-						pixel.x = x + (i + rand_float()) / SPP;
-						pixel.y = y + (j + rand_float()) / SPP;
-
-						Ray *ray = nullptr;
-
-						//DOF -> Rays are not shot from the same point but instead from a "lens"
-						if (DEPTH_OF_FIELD) {
-
-							//Sample disk -> alternative to jitering that displaces rays in a circle
-							if (SAMPLE_DISK) lens = sample_unit_disk();
-							else {
-								lens.x = (i + rand_float()) / SPP;
-								lens.y = (j + rand_float()) / SPP;
-							}
-							ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
-						}
-						else ray = &scene->GetCamera()->PrimaryRay(pixel);
-
-						ray->id = ++rayCounter;
-
+						Ray* ray = nullptr;
 						if (PATHTRACING) {
-							color += Radiance(*ray, MAX_DEPTH, 1.0, i, j, seed);
+							double r1 = 2 * erand48(seed), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
+							double r2 = 2 * erand48(seed), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
+
+							pixel.x = x + (0.5 + dx) / SPP;
+							pixel.y = y + (0.5 + dy) / SPP;
+
+							ray = &scene->GetCamera()->PrimaryRay(pixel);
+
+							color += Radiance(*ray, MAX_DEPTH, 1.0, i, j, seed) / (SPP * SPP);
 						}
 						else{
+							pixel.x = x + (i + rand_float()) / SPP;
+							pixel.y = y + (j + rand_float()) / SPP;
+
+							//DOF -> Rays are not shot from the same point but instead from a "lens"
+							if (DEPTH_OF_FIELD) {
+
+								//Sample disk -> alternative to jitering that displaces rays in a circle
+								if (SAMPLE_DISK) lens = sample_unit_disk();
+								else {
+									lens.x = (i + rand_float()) / SPP;
+									lens.y = (j + rand_float()) / SPP;
+								}
+								ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
+							}
+							else ray = &scene->GetCamera()->PrimaryRay(pixel);
+
+							ray->id = ++rayCounter;
+
 							color += rayTracing(*ray, MAX_DEPTH, 1.0, i, j);
+							
+							color = color / (SPP * SPP);
 						}
 						
 					}
 				}
 
-				color = color / (SPP * SPP);
+
 			}
 			//No Antialiasing -> single ray per pixel
 			else {
@@ -788,7 +830,7 @@ void renderScene()
 				}
 			}
 		}
-		
+
 		if (draw_mode == 1 && drawModeEnabled) {  // drawing line by line
 			drawPoints();
 			index_pos = 0;
