@@ -93,7 +93,9 @@ bool Triangle::intercepts(Ray& ray, float& time) {
 	return (true);
 }
 
-
+Vector Triangle::getCentroid(void) {
+	return (points[0] + points[1] + points[2]) / 3;
+}
 
 
 // ======== PLANE METHODS ========
@@ -269,7 +271,9 @@ Vector aaBox::getNormal(Vector point)
 	return norm;
 }
 
-
+Vector aaBox::getCentroid() {
+	return (max + min) / 2;
+}
 
 
 

@@ -43,7 +43,7 @@
 #define SOFT_SHADOWS false
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 10
+#define SPP 25
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .5f

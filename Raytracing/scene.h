@@ -89,6 +89,7 @@ public:
 	virtual bool intercepts( Ray& r, float& dist ) = 0;
 	virtual Vector getNormal( Vector point ) = 0;
 	virtual AABB GetBoundingBox() { return AABB(); }
+	virtual Vector getCentroid(void) = 0;
 
 protected:
 	Material* m_Material;
@@ -108,6 +109,7 @@ public:
 		 Plane		(Vector& P0, Vector& P1, Vector& P2);
 
 		 bool intercepts( Ray& r, float& dist );
+		 Vector getCentroid(void) { return Vector(); }
          Vector getNormal(Vector point);
 };
 
@@ -117,6 +119,7 @@ class Triangle : public Object
 public:
 	Triangle	(Vector& P0, Vector& P1, Vector& P2);
 	bool intercepts( Ray& r, float& t);
+	Vector getCentroid(void);
 	Vector getNormal(Vector point);
 	AABB GetBoundingBox(void);
 	
@@ -138,6 +141,10 @@ public:
 	Vector getNormal(Vector point);
 	AABB GetBoundingBox(void);
 
+	Vector getCentroid(void) {
+		return center;
+	};
+
 	Vector GetCenter() {
 		return center;
 	}
@@ -156,6 +163,7 @@ class aaBox : public Object   //Axis aligned box: another geometric object
 {
 public:
 	aaBox(Vector& minPoint, Vector& maxPoint);
+	Vector getCentroid();
 	AABB GetBoundingBox(void);
 	bool intercepts(Ray& r, float& t);
 	Vector getNormal(Vector point);
