@@ -80,7 +80,9 @@ set_rand_seed(const int seed) {
 // ---------------------------------------------------- float to byte (unsigned char)
 inline uint8_t u8fromfloat(float x)
 {
-	return (uint8_t)(x * 255.99f);
+	//return (uint8_t)(x * 255.99f);
+	return ((x * 255.99f) >= 255.0f ? 255 : (uint8_t)(x * 255.99f));
+
 }
 
 // ---------------------------------------------------- byte (unsigned char) to float

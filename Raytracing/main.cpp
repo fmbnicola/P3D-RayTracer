@@ -43,7 +43,7 @@
 #define SOFT_SHADOWS false
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 25
+#define SPP 5
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .5f
@@ -807,6 +807,9 @@ void renderScene()
 
 				color += rayTracing(ray, MAX_DEPTH, 1.0, 0, 0);
 			}
+
+			double invGamma = 1 / 2.2; //clara: 0.0 - 1.0  ; escura: 1.8 - 2.2
+			color = Color(pow(color.r(), invGamma), pow(color.g(), invGamma), pow(color.b(), invGamma));
 
 			//Create Image
 			img_Data[counter++] = u8fromfloat((float)color.r());
