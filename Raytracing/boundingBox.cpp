@@ -96,3 +96,17 @@ bool AABB::intercepts(const Ray& ray, float& t)
 
 	return (t0 < t1 && t1 > 0.0001);
 }
+
+Vector AABB::centroid(void) {
+	return (min + max) / 2;
+}
+
+void AABB::extend(AABB box) {
+	if (min.x < box.min.x) min.x = box.min.x;
+	if (min.y < box.min.y) min.y = box.min.y;
+	if (min.z < box.min.z) min.z = box.min.z;
+
+	if (max.x > box.max.x) max.x = box.max.x;
+	if (max.y > box.max.y) max.y = box.max.y;
+	if (max.z > box.max.z) max.z = box.max.z;
+}

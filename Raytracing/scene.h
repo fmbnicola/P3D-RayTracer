@@ -119,7 +119,9 @@ class Triangle : public Object
 public:
 	Triangle	(Vector& P0, Vector& P1, Vector& P2);
 	bool intercepts( Ray& r, float& t);
-	Vector getCentroid(void);
+	Vector getCentroid(void) {
+		return GetBoundingBox().centroid();
+	};
 	Vector getNormal(Vector point);
 	AABB GetBoundingBox(void);
 	

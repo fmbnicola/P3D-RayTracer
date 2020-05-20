@@ -18,6 +18,8 @@ public:
 	
 	bool intercepts(const Ray& r, float& t);
 	bool isInside(const Vector& p);
+	Vector centroid(void);
+	void extend(AABB box);
 };
 
 #endif

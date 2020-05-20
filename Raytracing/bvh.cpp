@@ -8,9 +8,7 @@ using namespace std;
 #include "vector.h"
 #include "ray.h"
 #include "boundingBox.h"
-#include <atomic> 
-#include <memory> 
-#include <cassert> 
+
 #include <vector> 
 #include <iostream> 
 #include <fstream> 
@@ -26,323 +24,124 @@ using namespace std;
 #define M_PI (3.14159265358979323846) 
 #endif 
 
-const float kEpsilon = 1e-8;
-const float kInfinity = std::numeric_limits<float>::max();
-
-std::atomic<uint32_t> numPrimaryRays(0);
-std::atomic<uint32_t> numRayTriangleTests(0);
-std::atomic<uint32_t> numRayTriangleIntersections(0);
-std::atomic<uint32_t> numRayAABBTests(0);
-std::atomic<uint32_t> numRayBoundingVolumeTests(0);
-
 class BVH
 {
-    static const uint8_t kNumPlaneSetNormals = 7;
-    static const Vector planeSetNormals[kNumPlaneSetNormals];
-    struct Extents
-    {
-        AABB aabb;
-        Extents()
-        {
-            for (uint8_t i = 0; i < kNumPlaneSetNormals; ++i)
-                d[i][0] = kInfinity,
-                d[i][1] = -kInfinity;
-        }
-        void extendBy(const Extents& e)
-        {
 
-            for (uint8_t i = 0; i < kNumPlaneSetNormals; ++i) {
-                if (e.d[i][0] < d[i][0]) d[i][0] = e.d[i][0];
-                if (e.d[i][1] > d[i][1]) d[i][1] = e.d[i][1];
-            }
-        }
-        /* inline */
-        Vector centroid() const
-        {
-            return Vector(
-                d[0][0] + d[0][1] * 0.5,
-                d[1][0] + d[1][1] * 0.5,
-                d[2][0] + d[2][1] * 0.5);
-        }
-        bool intersect(const float*, const float*, float&, float&, uint8_t&) const;
-        float d[kNumPlaneSetNormals][2];
-        const Object* mesh;
-    };
+	int Threshold = 2;
+	vector<Object*> objs;
 
-    struct Octree
-    {
-        Octree(const Extents& sceneExtents)
-        {
-            float xDiff = sceneExtents.d[0][1] - sceneExtents.d[0][0];
-            float yDiff = sceneExtents.d[1][1] - sceneExtents.d[1][0];
-            float zDiff = sceneExtents.d[2][1] - sceneExtents.d[2][0];
-            float maxDiff = std::max(xDiff, std::max(yDiff, zDiff));
-            Vector minPlusMax(
-                sceneExtents.d[0][0] + sceneExtents.d[0][1],
-                sceneExtents.d[1][0] + sceneExtents.d[1][1],
-                sceneExtents.d[2][0] + sceneExtents.d[2][1]);
-            bbox[0] = (minPlusMax - maxDiff) * 0.5;
-            bbox[1] = (minPlusMax + maxDiff) * 0.5;
-            root = new OctreeNode;
-        }
+	class Comparator {
+	public:
+		int dimension;
 
-        ~Octree() { deleteOctreeNode(root); }
+		bool operator() (Object* a, Object* b) {
+			AABB box;
+			box = a->GetBoundingBox();
+			float ca = (box.max.getIndex(dimension) + box.min.getIndex(dimension)) * 0.5f;
+			box = b->GetBoundingBox();
+			float cb = (box.max.getIndex(dimension) + box.min.getIndex(dimension)) * 0.5f;
+			return ca < cb;
+		}
+	};
 
-        void insert(const Extents* extents) { insert(root, extents, bbox, 0); }
-        void build() { build(root, bbox); };
+	class BVHNode {
+	private:
+		AABB bbox;
+		bool leaf;
+		unsigned int n_objs;
+		unsigned int index;	// if leaf == false: index to left child node,
+							// else if leaf == true: index to first Intersectable in Objsvector
 
-        struct OctreeNode
-        {
-            OctreeNode* child[8] = { nullptr };
-            std::vector<const Extents*> nodeExtentsList; // pointer to the objects extents 
-            Extents nodeExtents; // extents of the octree node itself 
-            bool isLeaf = true;
-        };
+	public: 
+		void setAABB(AABB& bbox_) {
+			bbox = bbox;
+		}
 
-        struct QueueElement
-        {
-            const OctreeNode* node; // octree node held by this element in the queue 
-            float t; // distance from the ray origin to the extents of the node 
-            QueueElement(const OctreeNode* n, float tn) : node(n), t(tn) {}
-            // priority_queue behaves like a min-heap
-            friend bool operator < (const QueueElement& a, const QueueElement& b) { return a.t > b.t; }
-        };
+		void makeLeaf(unsigned int index_, unsigned int n_objs_) { this->index = index; this->n_objs = n_objs; }
+		void makeNode(unsigned int left_index_, unsigned int n_objs) { this->index = left_index_; this->n_objs = n_objs; }
+			// n_objsin makeNode is for debug purposes only, and may be omitted later on
+		bool isLeaf() { return leaf; }
+		unsigned int getIndex() { return index; }
+		unsigned int getNObjs() { return n_objs; }
+		AABB &getAABB() { return bbox; };
 
-        OctreeNode* root = nullptr; // make unique son don't have to manage deallocation 
-        AABB<> bbox;
+	};
 
-    private:
+	public:
+		void build(vector<Object *> &objects) {
+			vector<BVHNode> nodes;
 
-        void deleteOctreeNode(OctreeNode*& node)
-        {
-            for (uint8_t i = 0; i < 8; i++) {
-                if (node->child[i] != nullptr) {
-                    deleteOctreeNode(node->child[i]);
-                }
-            }
-            delete node;
-        }
+			BVHNode root;
 
-        void insert(OctreeNode*& node, const Extents* extents, const AABB<>& bbox, uint32_t depth)
-        {
-            if (node->isLeaf) {
-                if (node->nodeExtentsList.size() == 0 || depth == 16) {
-                    node->nodeExtentsList.push_back(extents);
-                }
-                else {
-                    node->isLeaf = false;
-                    // Re-insert extents held by this node
-                    while (node->nodeExtentsList.size()) {
-                        insert(node, node->nodeExtentsList.back(), bbox, depth);
-                        node->nodeExtentsList.pop_back();
-                    }
-                    // Insert new extent
-                    insert(node, extents, bbox, depth);
-                }
-            }
-            else {
-                // Need to compute in which child of the current node this extents should
-                // be inserted into
-                Vector extentsCentroid = extents->centroid();
-                Vector nodeCentroid = (bbox[0] + bbox[1]) * 0.5;
-                AABB<> childAABB;
-                uint8_t childIndex = 0;
-                // x-axis
-                if (extentsCentroid.x > nodeCentroid.x) {
-                    childIndex = 4;
-                    childAABB[0].x = nodeCentroid.x;
-                    childAABB[1].x = bbox[1].x;
-                }
-                else {
-                    childAABB[0].x = bbox[0].x;
-                    childAABB[1].x = nodeCentroid.x;
-                }
-                // y-axis
-                if (extentsCentroid.y > nodeCentroid.y) {
-                    childIndex += 2;
-                    childAABB[0].y = nodeCentroid.y;
-                    childAABB[1].y = bbox[1].y;
-                }
-                else {
-                    childAABB[0].y = bbox[0].y;
-                    childAABB[1].y = nodeCentroid.y;
-                }
-                // z-axis
-                if (extentsCentroid.z > nodeCentroid.z) {
-                    childIndex += 1;
-                    childAABB[0].z = nodeCentroid.z;
-                    childAABB[1].z = bbox[1].z;
-                }
-                else {
-                    childAABB[0].z = bbox[0].z;
-                    childAABB[1].z = nodeCentroid.z;
-                }
+			Vector min = Vector(FLT_MAX, FLT_MAX, FLT_MAX), max = Vector(FLT_MIN, FLT_MIN, FLT_MIN);
 
-                // Create the child node if it doesn't exsit yet and then insert the extents in it
-                if (node->child[childIndex] == nullptr)
-                    node->child[childIndex] = new OctreeNode;
-                insert(node->child[childIndex], extents, childAABB, depth + 1);
-            }
-        }
+			for (Object* obj : objects) {
+				AABB bbox = obj->GetBoundingBox();
+				if (bbox.min.x < min.x) min.x = bbox.min.x;
+				if (bbox.min.y < min.y) min.y = bbox.min.y;
+				if (bbox.min.z < min.z) min.z = bbox.min.z;
 
-        void build(OctreeNode*& node, const AABB<>& bbox)
-        {
-            if (node->isLeaf) {
-                for (const auto& e : node->nodeExtentsList) {
-                    node->nodeExtents.extendBy(*e);
-                }
-            }
-            else {
-                for (uint8_t i = 0; i < 8; ++i) {
-                    if (node->child[i]) {
-                        AABB<> childAABB;
-                        Vector centroid = bbox.centroid();
-                        // x-axis
-                        childAABB[0].x = (i & 4) ? centroid.x : bbox[0].x;
-                        childAABB[1].x = (i & 4) ? bbox[1].x : centroid.x;
-                        // y-axis
-                        childAABB[0].y = (i & 2) ? centroid.y : bbox[0].y;
-                        childAABB[1].y = (i & 2) ? bbox[1].y : centroid.y;
-                        // z-axis
-                        childAABB[0].z = (i & 1) ? centroid.z : bbox[0].z;
-                        childAABB[1].z = (i & 1) ? bbox[1].z : centroid.z;
+				if (bbox.max.x > max.x) max.x = bbox.max.x;
+				if (bbox.max.y > max.y) max.y = bbox.max.y;
+				if (bbox.max.z > max.z) max.z = bbox.max.z;
 
-                        // Inspect child
-                        build(node->child[i], childAABB);
+				objs.push_back(obj);
+			}
 
-                        // Expand extents with extents of child
-                        node->nodeExtents.extendBy(node->child[i]->nodeExtents);
-                    }
-                }
-            }
-        }
-    };
+			AABB finalBBox = AABB(min, max);
 
-    std::vector<Extents> extentsList;
-    Octree* octree = nullptr;
-public:
-    BVH(std::vector<std::unique_ptr<const Object>>& m);
-    bool intersect(const Vector&, const Vector&, const uint32_t&, float&) const;
-    ~BVH() { delete octree; }
+			root.setAABB(finalBBox);
+
+			build_recursive(0, objs.size(), root, 0);
+		}
+
+		void build_recursive(int left_index, int right_index, BVHNode& node, int depth) {
+
+			if ((right_index - left_index) <= Threshold ) {
+				//node.makeLeaf(left_index, )
+			}
+			else {
+				// Get largest axis
+				AABB node_bb = node.getAABB();
+
+				int op; // 0->x, 1->y, 2->z
+
+				Vector len = node_bb.max - node_bb.min;
+
+				if (len.x >= len.y && len.x >= len.z) op = 0;
+				else if (len.y >= len.x && len.y >= len.z) op = 1;
+				else op = 2;
+
+				// sorting of the objects
+				Comparator cmp;
+				cmp.dimension = op;
+
+				sort(objs.begin() + left_index, objs.end() + right_index, cmp);
+
+				float mid_coord = len.getIndex(op);
+				bool found = false;
+				int i;
+
+				// if no objects are gonna be on the left or right divisions, use mean
+				if (objs[left_index]->getCentroid().getIndex(op) > mid_coord ||
+					objs[right_index - 1]->getCentroid().getIndex(op) < mid_coord) {
+					mid_coord = 0;
+					for (i = left_index; i < right_index; i++) {
+						mid_coord += objs[i]->getCentroid().getIndex(op);
+					}
+					mid_coord /= (right_index - left_index);
+				}
+
+				// the i value obtained is the split_index
+				for (i = left_index; i < right_index; i++) {
+					if (objs[i]->getCentroid().getIndex(op) > mid_coord) {
+						break;
+					}
+				}
+
+				Vector min_left, min_right, max_left, max_right;
+
+			}
+		}
+		
 };
-
-const Vector BVH::planeSetNormals[BVH::kNumPlaneSetNormals] = {
-    Vector(1, 0, 0),
-    Vector(0, 1, 0),
-    Vector(0, 0, 1),
-    Vector(sqrtf(3) / 3.f,  sqrtf(3) / 3.f, sqrtf(3) / 3.f),
-    Vector(-sqrtf(3) / 3.f,  sqrtf(3) / 3.f, sqrtf(3) / 3.f),
-    Vector(-sqrtf(3) / 3.f, -sqrtf(3) / 3.f, sqrtf(3) / 3.f),
-    Vector(sqrtf(3) / 3.f, -sqrtf(3) / 3.f, sqrtf(3) / 3.f)
-};
-
-BVH::BVH(std::vector<std::unique_ptr<const Object>>& m)
-{
-    Extents sceneExtents; // that's the extent of the entire scene which we need to compute for the octree 
-    extentsList.reserve(meshes.size());
-    for (uint32_t i = 0; i < meshes.size(); ++i) {
-        for (uint8_t j = 0; j < kNumPlaneSetNormals; ++j) {
-            for (const auto vtx : meshes[i]->vertexPool) {
-                float d = dot(planeSetNormals[j], vtx);
-                // set dNEar and dFar
-                if (d < extentsList[i].d[j][0]) extentsList[i].d[j][0] = d;
-                if (d > extentsList[i].d[j][1]) extentsList[i].d[j][1] = d;
-            }
-        }
-        sceneExtents.extendBy(extentsList[i]); // expand the scene extent of this object's extent 
-        extentsList[i].mesh = meshes[i].get(); // the extent itself needs to keep a pointer to the object its holds 
-    }
-
-    // Now that we have the extent of the scene we can start building our octree
-    // Using C++ make_unique function here but you don't need to, just to learn something... 
-    octree = new Octree(sceneExtents);
-
-    for (uint32_t i = 0; i < meshes.size(); ++i) {
-        octree->insert(&extentsList[i]);
-    }
-
-    // Build from bottom up
-    octree->build();
-}
-
-bool BVH::Extents::intersect(
-    const float* precomputedNumerator,
-    const float* precomputedDenominator,
-    float& tNear,   // tn and tf in this method need to be contained 
-    float& tFar,    // within the range [tNear:tFar] 
-    uint8_t& planeIndex) const
-{
-    numRayBoundingVolumeTests++;
-    for (uint8_t i = 0; i < kNumPlaneSetNormals; ++i) {
-        float tNearExtents = (d[i][0] - precomputedNumerator[i]) / precomputedDenominator[i];
-        float tFarExtents = (d[i][1] - precomputedNumerator[i]) / precomputedDenominator[i];
-        if (precomputedDenominator[i] < 0) std::swap(tNearExtents, tFarExtents);
-        if (tNearExtents > tNear) tNear = tNearExtents, planeIndex = i;
-        if (tFarExtents < tFar) tFar = tFarExtents;
-        if (tNear > tFar) return false;
-    }
-
-    return true;
-}
-
-bool BVH::intersect(const Vector& orig, const Vector& dir, const uint32_t& rayId, float& tHit) const
-{
-    tHit = kInfinity;
-    const Object* intersectedObject = nullptr;
-    float precomputedNumerator[BVH::kNumPlaneSetNormals];
-    float precomputedDenominator[BVH::kNumPlaneSetNormals];
-    for (uint8_t i = 0; i < kNumPlaneSetNormals; ++i) {
-        precomputedNumerator[i] = dot(planeSetNormals[i], orig);
-        precomputedDenominator[i] = dot(planeSetNormals[i], dir);
-    }
-
-    /*
-    tNear = kInfinity; // set
-    for (uint32_t i = 0; i < meshes.size(); ++i) {
-        numRayVolumeTests++;
-        float tn = -kInfinity, tf = kInfinity;
-        uint8_t planeIndex;
-        if (extents[i].intersect(precomputedNumerator, precomputedDenominator, tn, tf, planeIndex)) {
-            if (tn < tNear) {
-                intersectedObject = meshes[i].get();
-                tNear = tn;
-                // normal = planeSetNormals[planeIndex];
-            }
-        }
-    }
-    */
-
-    uint8_t planeIndex;
-    float tNear = 0, tFar = kInfinity; // tNear, tFar for the intersected extents 
-    if (!octree->root->nodeExtents.intersect(precomputedNumerator, precomputedDenominator, tNear, tFar, planeIndex) || tFar < 0)
-        return false;
-    tHit = tFar;
-    std::priority_queue<BVH::Octree::QueueElement> queue;
-    queue.push(BVH::Octree::QueueElement(octree->root, 0));
-    while (!queue.empty() && queue.top().t < tHit) {
-        const Octree::OctreeNode* node = queue.top().node;
-        queue.pop();
-        if (node->isLeaf) {
-            for (const auto& e : node->nodeExtentsList) {
-                float t = kInfinity;
-                if (e->mesh->intersect(orig, dir, t) && t < tHit) {
-                    tHit = t;
-                    intersectedObject = e->mesh;
-                }
-            }
-        }
-        else {
-            for (uint8_t i = 0; i < 8; ++i) {
-                if (node->child[i] != nullptr) {
-                    float tNearChild = 0, tFarChild = tFar;
-                    if (node->child[i]->nodeExtents.intersect(precomputedNumerator, precomputedDenominator, tNearChild, tFarChild, planeIndex)) {
-                        float t = (tNearChild < 0 && tFarChild >= 0) ? tFarChild : tNearChild;
-                        queue.push(BVH::Octree::QueueElement(node->child[i], t));
-                    }
-                }
-            }
-        }
-    }
-
-    return (intersectedObject != nullptr);
-}
