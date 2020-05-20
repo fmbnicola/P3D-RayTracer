@@ -22,6 +22,7 @@
 
 #include "scene.h"
 #include "grid.h"
+#include "bvh.cpp"
 #include "maths.h"
 #include "sampler.h"
 
@@ -37,7 +38,10 @@
 #define MAX_DEPTH 10
 
 //Grid Aceleration Structure
-#define USING_GRID true
+#define USING_GRID false
+
+//Grid Aceleration Structure (shouldn't be true at the same time as the uniform grid)
+#define USING_BVH true
 
 //Shadow type (true -> Soft Shadows, false->hard shadows)
 #define SOFT_SHADOWS false
@@ -98,6 +102,7 @@ GLint UniformId;
 
 Scene* scene = NULL;
 Grid grid;
+BVH bvh;
 
 int RES_X, RES_Y;
 
@@ -715,6 +720,16 @@ void renderScene()
 		}
 
 		grid.Build();
+	}
+
+	if (USING_BVH) {
+		vector<Object*> objs;
+
+		for (int o = 0; o < scene->getNumObjects(); o++) {
+			objs.push_back(scene->getObject(o));
+		}
+
+		bvh.build(objs);
 	}
 
 	set_rand_seed(time(NULL) * time(NULL));

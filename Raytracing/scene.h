@@ -88,7 +88,7 @@ public:
 	void SetMaterial( Material *a_Mat ) { m_Material = a_Mat; }
 	virtual bool intercepts( Ray& r, float& dist ) = 0;
 	virtual Vector getNormal( Vector point ) = 0;
-	virtual AABB GetBoundingBox() { return AABB(); }
+	virtual AABB GetBoundingBox() = 0;
 	virtual Vector getCentroid(void) = 0;
 
 protected:
@@ -111,6 +111,7 @@ public:
 		 bool intercepts( Ray& r, float& dist );
 		 Vector getCentroid(void) { return Vector(); }
          Vector getNormal(Vector point);
+		 AABB GetBoundingBox() { return AABB(); }
 };
 
 class Triangle : public Object

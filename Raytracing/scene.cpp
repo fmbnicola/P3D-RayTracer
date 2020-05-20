@@ -93,11 +93,6 @@ bool Triangle::intercepts(Ray& ray, float& time) {
 	return (true);
 }
 
-Vector Triangle::getCentroid(void) {
-	return (points[0] + points[1] + points[2]) / 3;
-}
-
-
 // ======== PLANE METHODS ========
 
 Plane::Plane(Vector& a_PN, Vector a_A)

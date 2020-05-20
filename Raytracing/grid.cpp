@@ -237,7 +237,7 @@ Vector Grid::find_max_bounds(void)
 {
 	float kEpsilon = 0.0001;
 	Vector bbox_max;
-	Vector p1 = Vector(FLT_MIN, FLT_MIN, FLT_MIN);
+	Vector p1 = Vector(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	int num_objects = getNumObjects();
 
 	// find min

@@ -26,10 +26,6 @@ using namespace std;
 
 class BVH
 {
-
-	int Threshold = 2;
-	vector<Object*> objs;
-
 	class Comparator {
 	public:
 		int dimension;
@@ -54,12 +50,21 @@ class BVH
 
 	public: 
 		void setAABB(AABB& bbox_) {
-			bbox = bbox;
+			this->bbox = bbox_;
 		}
 
-		void makeLeaf(unsigned int index_, unsigned int n_objs_) { this->index = index; this->n_objs = n_objs; }
-		void makeNode(unsigned int left_index_, unsigned int n_objs) { this->index = left_index_; this->n_objs = n_objs; }
-			// n_objsin makeNode is for debug purposes only, and may be omitted later on
+		void makeLeaf(unsigned int index_, unsigned int n_objs_) {
+			this->leaf = true;
+			this->index = index_; 
+			this->n_objs = n_objs_; 
+		}
+
+		void makeNode(unsigned int left_index_, unsigned int n_objs_ = 0) { 
+			this->leaf = false;
+			this->index = left_index_; 
+			this->n_objs = n_objs_; 
+		}
+
 		bool isLeaf() { return leaf; }
 		unsigned int getIndex() { return index; }
 		unsigned int getNObjs() { return n_objs; }
@@ -67,42 +72,41 @@ class BVH
 
 	};
 
+	int Threshold = 2;
+	vector<Object*> objs;
+	vector<BVHNode*> nodes;
+
 	public:
 		void build(vector<Object *> &objects) {
-			vector<BVHNode> nodes;
 
-			BVHNode root;
+			BVHNode *root = new BVHNode();
 
-			Vector min = Vector(FLT_MAX, FLT_MAX, FLT_MAX), max = Vector(FLT_MIN, FLT_MIN, FLT_MIN);
+			Vector min = Vector(FLT_MAX, FLT_MAX, FLT_MAX), max = Vector(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+			AABB final_bbox = AABB(min, max);
 
 			for (Object* obj : objects) {
 				AABB bbox = obj->GetBoundingBox();
-				if (bbox.min.x < min.x) min.x = bbox.min.x;
-				if (bbox.min.y < min.y) min.y = bbox.min.y;
-				if (bbox.min.z < min.z) min.z = bbox.min.z;
-
-				if (bbox.max.x > max.x) max.x = bbox.max.x;
-				if (bbox.max.y > max.y) max.y = bbox.max.y;
-				if (bbox.max.z > max.z) max.z = bbox.max.z;
-
+				final_bbox.extend(bbox);
 				objs.push_back(obj);
 			}
 
-			AABB finalBBox = AABB(min, max);
+			root->setAABB(final_bbox);
+			root->makeNode(0);
+			nodes.push_back(root);
 
-			root.setAABB(finalBBox);
+			build_recursive(0, objs.size(), root);
 
-			build_recursive(0, objs.size(), root, 0);
+			int i = 0;
 		}
 
-		void build_recursive(int left_index, int right_index, BVHNode& node, int depth) {
+		void build_recursive(int left_index, int right_index, BVHNode *node) {
 
 			if ((right_index - left_index) <= Threshold ) {
-				//node.makeLeaf(left_index, )
+				node->makeLeaf(left_index, (right_index - left_index));
 			}
 			else {
 				// Get largest axis
-				AABB node_bb = node.getAABB();
+				AABB node_bb = node->getAABB();
 
 				int op; // 0->x, 1->y, 2->z
 
@@ -116,15 +120,15 @@ class BVH
 				Comparator cmp;
 				cmp.dimension = op;
 
-				sort(objs.begin() + left_index, objs.end() + right_index, cmp);
+				sort(objs.begin() + left_index, objs.begin() + right_index, cmp);
 
-				float mid_coord = len.getIndex(op);
+				float mid_coord = (node_bb.max.getIndex(op) + node_bb.min.getIndex(op)) * 0.5;
 				bool found = false;
 				int i;
 
 				// if no objects are gonna be on the left or right divisions, use mean
 				if (objs[left_index]->getCentroid().getIndex(op) > mid_coord ||
-					objs[right_index - 1]->getCentroid().getIndex(op) < mid_coord) {
+					objs[right_index - 1]->getCentroid().getIndex(op) <= mid_coord) {
 					mid_coord = 0;
 					for (i = left_index; i < right_index; i++) {
 						mid_coord += objs[i]->getCentroid().getIndex(op);
@@ -139,8 +143,33 @@ class BVH
 					}
 				}
 
-				Vector min_left, min_right, max_left, max_right;
+				Vector min_right, min_left = min_right = Vector(FLT_MAX, FLT_MAX, FLT_MAX);
+				Vector max_right, max_left = max_right = Vector(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
+				AABB left_bbox(min_left, max_left), right_bbox(min_right, max_right);
+
+				for (int j = left_index; j < i; j++) {
+					left_bbox.extend(objs[j]->GetBoundingBox());
+				}
+
+				for (int j = i; j < right_index; j++) {
+					right_bbox.extend(objs[j]->GetBoundingBox());
+				}
+
+				BVHNode* left_node = new BVHNode();
+				BVHNode* right_node = new BVHNode();
+				left_node->setAABB(left_bbox);
+
+				right_node->setAABB(right_bbox);
+
+				nodes.push_back(left_node);
+				nodes.push_back(right_node);
+
+				left_node->makeNode(node->getIndex() * 2 + 1);
+				right_node->makeNode(node->getIndex() * 2 + 2);
+
+				build_recursive(left_index, i, left_node);
+				build_recursive(i, right_index, right_node);
 			}
 		}
 		
