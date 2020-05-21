@@ -59,7 +59,7 @@
 #define SAMPLE_DISK false
 
 //Antialiasing flag (also turns on the DOF)
-#define ANTIALIASING true
+#define ANTIALIASING false
 
 //Depth of field flag (for DOF to work, antialiasing must be true as well)
 #define DEPTH_OF_FIELD false
@@ -142,6 +142,11 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 			min_obj = NULL;
 		}
 	}
+	else if (USING_BVH) {
+		if (!bvh.intersect_bvh(ray, &min_obj, hit_p)) {
+			min_obj = NULL;
+		}
+	}
 	else {
 		//iterate through all objects in scene to check for interception
 		for (int i = 0; i < scene->getNumObjects(); i++) {
@@ -192,7 +197,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		float fs;
 
 		//fixes floating point errors in intersection
-		Vector interceptNotPrecise = (!USING_GRID) ? ray.origin + ray.direction * min_t : hit_p;
+		Vector interceptNotPrecise = (!USING_GRID && !USING_BVH) ? ray.origin + ray.direction * min_t : hit_p;
 		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj->getNormal(interceptNotPrecise));
 
 		norm = min_obj->getNormal(intercept);

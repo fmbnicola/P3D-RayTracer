@@ -196,18 +196,23 @@ class BVH
 		}
 
 		bool intersect_bvh(Ray ray, Object** hit_obj, Vector &hit_point) {
-			float tmin = FLT_MAX;
+			float tmp, tmin = FLT_MAX;
+			bool hit = false;
+
 			BVHNode* currentNode = nodes[0];
-			if (!currentNode->getAABB().intercepts(ray, tmin)) {
+			if (!currentNode->getAABB().intercepts(ray, tmp)) {
 				return false;
 			}
+
 			while (true) {
 				if (!currentNode->isLeaf()) {
 					BVHNode* l_node = nodes[currentNode->getIndex()];
 					BVHNode* r_node = nodes[currentNode->getIndex() + 1];
 					float l_t, r_t;
+
 					bool l_hit = l_node->getAABB().intercepts(ray, l_t);
 					bool r_hit = r_node->getAABB().intercepts(ray, r_t);
+
 					if (l_hit && r_hit) {
 						if (l_t < r_t) {
 							currentNode = l_node;
@@ -218,22 +223,46 @@ class BVH
 							// push l to stack
 							hit_stack.push(StackItem(l_node, l_t));
 						}
+						continue;
 					}
-					else if (l_hit) currentNode = l_node;
-					else if (r_hit) currentNode = r_node;
+					else if (l_hit) {
+						currentNode = l_node;
+						continue;
+					}
+					else if (r_hit) {
+						currentNode = r_node;
+						continue;
+					}
 				}
 				else {
 					Object* obj;
 					float curr_t;
 					for (int i = currentNode->getIndex(); i < currentNode->getIndex() + currentNode->getNObjs(); i++) {
 						obj = objs[i];
-						if (obj->intercepts(ray, curr_t) || curr_t < tmin) {
+						if (obj->intercepts(ray, curr_t) && curr_t < tmin) {
 							tmin = curr_t;
 							*hit_obj = obj;
+							hit = true;
 						}
 					}
 				}
-				//FIXME: pop the stack
+
+				while (!hit_stack.empty()) {
+					StackItem popped = hit_stack.top();
+					hit_stack.pop();
+
+					if (popped.t < tmin) {
+						currentNode = popped.ptr;
+						break;
+					}
+				}
+
+				if (hit_stack.empty()) {
+					if (hit) {
+						hit_point = ray.direction * tmin + ray.origin;
+					}
+					return hit;
+				}
 			}
 		}
 
