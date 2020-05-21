@@ -78,6 +78,8 @@ class BVH
 
 	public:
 		void build(vector<Object *> &objects) {
+			nodes = vector<BVHNode*>();
+			nodes.reserve(objects.size());
 
 			BVHNode *root = new BVHNode();
 
@@ -136,12 +138,20 @@ class BVH
 					mid_coord /= (right_index - left_index);
 				}
 
-				// the i value obtained is the split_index
-				for (i = left_index; i < right_index; i++) {
-					if (objs[i]->getCentroid().getIndex(op) > mid_coord) {
-						break;
+				if (objs[left_index]->getCentroid().getIndex(op) > mid_coord ||
+					objs[right_index - 1]->getCentroid().getIndex(op) <= mid_coord) {
+
+					i = floor((right_index - left_index) / 2);
+				}
+				else {
+					for (i = left_index; i < right_index; i++) {
+						if (objs[i]->getCentroid().getIndex(op) > mid_coord) {
+							break;
+						}
 					}
 				}
+
+				// the i value obtained is the split_index
 
 				Vector min_right, min_left = min_right = Vector(FLT_MAX, FLT_MAX, FLT_MAX);
 				Vector max_right, max_left = max_right = Vector(-FLT_MAX, -FLT_MAX, -FLT_MAX);
@@ -162,11 +172,14 @@ class BVH
 
 				right_node->setAABB(right_bbox);
 
-				nodes.push_back(left_node);
-				nodes.push_back(right_node);
+				// before [..., node, ..., x]
+				node->makeNode(nodes.size());
 
-				left_node->makeNode(node->getIndex() * 2 + 1);
-				right_node->makeNode(node->getIndex() * 2 + 2);
+				// after [..., node, ..., x, left, right] => 
+				// left_index = size of nodes before push_backs
+				// right_index = left_index + 1
+				nodes.push_back(left_node); // [node, ..., left_child_of_node, right_child_of_node, ...]
+				nodes.push_back(right_node);
 
 				build_recursive(left_index, i, left_node);
 				build_recursive(i, right_index, right_node);
