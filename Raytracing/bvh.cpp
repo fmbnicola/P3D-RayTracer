@@ -16,6 +16,7 @@ using namespace std;
 #include <cmath> 
 #include <chrono> 
 #include <queue> 
+#include <stack>
 #include "vector.h"
 #include "boundingBox.h"
 #include "scene.h"
@@ -72,9 +73,17 @@ class BVH
 
 	};
 
+	struct StackItem {
+		BVHNode* ptr;
+		float t;
+
+		StackItem(BVHNode* _ptr, float _t) : ptr(_ptr), t(_t) { }
+	};
+
 	int Threshold = 2;
 	vector<Object*> objs;
 	vector<BVHNode*> nodes;
+	stack<StackItem> hit_stack;
 
 	public:
 		void build(vector<Object *> &objects) {
@@ -185,5 +194,48 @@ class BVH
 				build_recursive(i, right_index, right_node);
 			}
 		}
+
+		bool intersect_bvh(Ray ray, Object** hit_obj, Vector &hit_point) {
+			float tmin = FLT_MAX;
+			BVHNode* currentNode = nodes[0];
+			if (!currentNode->getAABB().intercepts(ray, tmin)) {
+				return false;
+			}
+			while (true) {
+				if (!currentNode->isLeaf()) {
+					BVHNode* l_node = nodes[currentNode->getIndex()];
+					BVHNode* r_node = nodes[currentNode->getIndex() + 1];
+					float l_t, r_t;
+					bool l_hit = l_node->getAABB().intercepts(ray, l_t);
+					bool r_hit = r_node->getAABB().intercepts(ray, r_t);
+					if (l_hit && r_hit) {
+						if (l_t < r_t) {
+							currentNode = l_node;
+							hit_stack.push(StackItem(r_node, r_t));
+						}
+						else {
+							currentNode = r_node;
+							// push l to stack
+							hit_stack.push(StackItem(l_node, l_t));
+						}
+					}
+					else if (l_hit) currentNode = l_node;
+					else if (r_hit) currentNode = r_node;
+				}
+				else {
+					Object* obj;
+					float curr_t;
+					for (int i = currentNode->getIndex(); i < currentNode->getIndex() + currentNode->getNObjs(); i++) {
+						obj = objs[i];
+						if (obj->intercepts(ray, curr_t) || curr_t < tmin) {
+							tmin = curr_t;
+							*hit_obj = obj;
+						}
+					}
+				}
+				//FIXME: pop the stack
+			}
+		}
+
 		
 };
