@@ -47,7 +47,7 @@
 #define SOFT_SHADOWS false
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 5
+#define SPP 50
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .5f
@@ -59,7 +59,7 @@
 #define SAMPLE_DISK false
 
 //Antialiasing flag (also turns on the DOF)
-#define ANTIALIASING false
+#define ANTIALIASING true
 
 //Depth of field flag (for DOF to work, antialiasing must be true as well)
 #define DEPTH_OF_FIELD false
@@ -78,7 +78,7 @@
 uint64_t rayCounter = 0;
 
 //Enable OpenGL drawing.  
-bool drawModeEnabled = true;
+bool drawModeEnabled = false;
 
 //Draw Mode: 0 - point by point; 1 - line by line; 2 - full frame at once
 int draw_mode = 1;
@@ -235,6 +235,11 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 						fs = 0; //is in shadow
 					}
 				}
+				if (USING_BVH) {
+					if (bvh.bool_intersect_bvh(feeler)) {
+						fs = 0;
+					}
+				}
 				else {
 					for (int j = 0; j < scene->getNumObjects(); j++) {
 
@@ -357,6 +362,10 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 		if (!grid.Traverse(ray, &min_obj, hit_p)) 
 			min_obj == NULL;
 	}
+	else if (USING_BVH) {
+		if (!bvh.intersect_bvh(ray, &min_obj, hit_p))
+			min_obj == NULL;
+	}
 	else {
 		//iterate through all objects in scene to check for interception
 		for (int i = 0; i < scene->getNumObjects(); i++) {
@@ -390,7 +399,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 	Vector norm, norml;
 	float fs;
 
-	Vector interceptNotPrecise = (USING_GRID) ? hit_p : ray.origin + ray.direction * min_t; // FIXME use grid
+	Vector interceptNotPrecise = (USING_GRID || USING_BVH) ? hit_p : ray.origin + ray.direction * min_t; // FIXME use grid
 
 	norm = min_obj->getNormal(interceptNotPrecise);
 	//properly oriented normal
@@ -476,18 +485,30 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			float t2 = FLT_MAX;
 			float min_t2 = FLT_MAX;
 
-			//iterate through all objects in scene to check for interception
-			for (int j = 0; j < scene->getNumObjects(); j++) {
-				obj2 = scene->getObject(j);
+			if (USING_GRID) {
+				if (!grid.Traverse(ray, &min_obj2, hit_p2)) {
+					min_obj2 = NULL;
+				}
+			}
+			else if (USING_BVH) {
+				if (!bvh.intersect_bvh(ray, &min_obj2, hit_p2)) {
+					min_obj2 = NULL;
+				}
+			}
+			else {
+				//iterate through all objects in scene to check for interception
+				for (int j = 0; j < scene->getNumObjects(); j++) {
+					obj2 = scene->getObject(j);
 
-				if (obj2->intercepts(ray, t2) && (t2 < min_t2)) {
-					min_obj2 = obj2;
-					min_t2 = t2;
+					if (obj2->intercepts(ray, t2) && (t2 < min_t2)) {
+						min_obj2 = obj2;
+						min_t2 = t2;
+					}
 				}
 			}
 
 			//if intersected (and not with the light itself)
-			if (min_obj2 != NULL && min_obj2 == obj) {//FIXME: make sure this is right
+			if (min_obj2 != NULL && min_obj2 == obj) { //FIXME: make sure this is right
 				double omega = 2 * PI * (1 - cos_a_max);
 				e = e + f * (emi * (l * norml) * omega) * (1 / PI);
 			}
@@ -778,15 +799,30 @@ void renderScene()
 					for (int j = 0; j < SPP; j++) {
 						Ray* ray = nullptr;
 						if (PATHTRACING) {
-							double r1 = 2 * erand48(seed), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
-							double r2 = 2 * erand48(seed), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
+							//double r1 = 2 * erand48(seed), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
+							//double r2 = 2 * erand48(seed), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
 
-							pixel.x = x + (0.5 + dx) / SPP;
-							pixel.y = y + (0.5 + dy) / SPP;
+							//pixel.x = x + (0.5 + dx) / SPP;
+							//pixel.y = y + (0.5 + dy) / SPP;
 
-							ray = &scene->GetCamera()->PrimaryRay(pixel);
+							pixel.x = x + (i + rand_float()) / SPP;
+							pixel.y = y + (j + rand_float()) / SPP;
 
-							color += Radiance(*ray, MAX_DEPTH, 1.0, i, j, seed) / (SPP * SPP);
+							if (DEPTH_OF_FIELD) {
+
+								//Sample disk -> alternative to jitering that displaces rays in a circle
+								if (SAMPLE_DISK) lens = sample_unit_disk();
+								else {
+									lens.x = (i + rand_float()) / SPP;
+									lens.y = (j + rand_float()) / SPP;
+								}
+								ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
+							}
+							else ray = &scene->GetCamera()->PrimaryRay(pixel);
+
+							//ray = &scene->GetCamera()->PrimaryRay(pixel);
+
+							color += Radiance(*ray, MAX_DEPTH, 1.0, i, j, seed);
 						}
 						else{
 							pixel.x = x + (i + rand_float()) / SPP;
@@ -808,13 +844,11 @@ void renderScene()
 							ray->id = ++rayCounter;
 
 							color += rayTracing(*ray, MAX_DEPTH, 1.0, i, j);
-							
-							color = color / (SPP * SPP);
 						}
 						
 					}
 				}
-
+				color = color / (SPP * SPP);
 
 			}
 			//No Antialiasing -> single ray per pixel

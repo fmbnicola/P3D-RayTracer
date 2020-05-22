@@ -150,7 +150,7 @@ class BVH
 				if (objs[left_index]->getCentroid().getIndex(op) > mid_coord ||
 					objs[right_index - 1]->getCentroid().getIndex(op) <= mid_coord) {
 
-					i = floor((right_index - left_index) / 2);
+					i = left_index + Threshold;
 				}
 				else {
 					for (i = left_index; i < right_index; i++) {
@@ -213,9 +213,13 @@ class BVH
 					bool l_hit = l_node->getAABB().intercepts(ray, l_t);
 					bool r_hit = r_node->getAABB().intercepts(ray, r_t);
 
+					if (l_node->getAABB().isInside(ray.origin)) l_t = 0;
+					if (r_node->getAABB().isInside(ray.origin)) r_t = 0;
+
 					if (l_hit && r_hit) {
 						if (l_t < r_t) {
 							currentNode = l_node;
+							// push l to stack
 							hit_stack.push(StackItem(r_node, r_t));
 						}
 						else {
@@ -247,15 +251,20 @@ class BVH
 					}
 				}
 
+				bool changed = false;
+
 				while (!hit_stack.empty()) {
 					StackItem popped = hit_stack.top();
 					hit_stack.pop();
 
 					if (popped.t < tmin) {
 						currentNode = popped.ptr;
+						changed = true;
 						break;
 					}
 				}
+
+				if (changed) continue;
 
 				if (hit_stack.empty()) {
 					if (hit) {
@@ -266,5 +275,67 @@ class BVH
 			}
 		}
 
-		
+		bool bool_intersect_bvh(Ray ray) {
+			float tmp;
+			BVHNode* currentNode = nodes[0];
+			if (!currentNode->getAABB().intercepts(ray, tmp)) {
+				return false;
+			}
+
+			while (true) {
+				if (!currentNode->isLeaf()) {
+					BVHNode* l_node = nodes[currentNode->getIndex()];
+					BVHNode* r_node = nodes[currentNode->getIndex() + 1];
+					float l_t, r_t;
+
+					bool l_hit = l_node->getAABB().intercepts(ray, l_t);
+					bool r_hit = r_node->getAABB().intercepts(ray, r_t);
+
+					if (l_hit && r_hit) {
+						if (l_t < r_t) {
+							currentNode = l_node;
+							// push l to stack
+							hit_stack.push(StackItem(r_node, r_t));
+						}
+						else {
+							currentNode = r_node;
+							// push l to stack
+							hit_stack.push(StackItem(l_node, l_t));
+						}
+						continue;
+					}
+					else if (l_hit) {
+						currentNode = l_node;
+						continue;
+					}
+					else if (r_hit) {
+						currentNode = r_node;
+						continue;
+					}
+				}
+				else {
+					Object* obj;
+					float curr_t;
+					for (int i = currentNode->getIndex(); i < currentNode->getIndex() + currentNode->getNObjs(); i++) {
+						obj = objs[i];
+						if (obj->intercepts(ray, curr_t)) {
+							return true;
+						}
+					}
+				}
+
+				bool changed = false;
+
+				while (!hit_stack.empty()) {
+					StackItem popped = hit_stack.top();
+					hit_stack.pop();
+					currentNode = popped.ptr;
+					changed = true;
+				}
+
+				if (changed) continue;
+
+				if (hit_stack.empty()) { return false; }
+			}
+		}		
 };
