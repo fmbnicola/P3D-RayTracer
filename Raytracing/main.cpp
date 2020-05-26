@@ -30,7 +30,7 @@
 
 #pragma region MACROS
 
-#define CAPTION "Whitted Ray-Tracer"
+#define CAPTION "Group 6 Ray/Path Tracer"
 
 #define VERTEX_COORD_ATTRIB 0
 #define COLOR_ATTRIB 1
@@ -310,7 +310,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 /////////////////////////////////////////////////////////////////////// PATHTRACING
 
-Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned short* seed, int emissive = 1, bool inside = false) {
+Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned short* seed, bool inside = false) {
 
 	Object* obj = NULL;
 	Object* min_obj = NULL;
@@ -383,8 +383,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 		if (rand_float() < p) {
 			f = f * (1 / p);
 		} else {
-			return mat->GetEmission();	// Emissive (in the powerpoints): try to find out
-										// working theories: serve para global illumination OU representa as luzes
+			return mat->GetEmission();	
 		}
 	}
 
