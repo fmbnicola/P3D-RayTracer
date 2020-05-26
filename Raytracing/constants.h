@@ -9,7 +9,7 @@
 #define SOFT_SHADOWS false
 
 //Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 10
+#define SPP 20
 
 //size of the side of the light jitter
 #define LIGHT_SIDE .5f
@@ -42,6 +42,6 @@ enum accel_struct {None, UGrid, Bvh};
 enum sample_mode {jitter, tent};
 
 accel_struct acl_str = accel_struct::Bvh;
-sample_mode s_mode = sample_mode::tent;
+sample_mode s_mode = sample_mode::jitter;
 
 #endif // __CONSTANTS_H__
