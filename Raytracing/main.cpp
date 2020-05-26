@@ -25,6 +25,7 @@
 #include "bvh.cpp"
 #include "maths.h"
 #include "sampler.h"
+#include "constants.h"
 
 
 #pragma region MACROS
@@ -34,43 +35,6 @@
 #define VERTEX_COORD_ATTRIB 0
 #define COLOR_ATTRIB 1
 
-//Number of bounces of secondary rays
-#define MAX_DEPTH 10
-
-//Grid Aceleration Structure
-#define USING_GRID false
-
-//Grid Aceleration Structure (shouldn't be true at the same time as the uniform grid)
-#define USING_BVH true
-
-//Shadow type (true -> Soft Shadows, false->hard shadows)
-#define SOFT_SHADOWS false
-
-//Sample per Pixel (in truth this is the sqrt spp) [also number of rays to shoot in no antialiasing soft shadows]
-#define SPP 50
-
-//size of the side of the light jitter
-#define LIGHT_SIDE .5f
-
-//Hard colors for intersections test
-#define TEST_INTERSECT false
-
-//Sample unit disk? (false for normal jitter)
-#define SAMPLE_DISK false
-
-//Antialiasing flag (also turns on the DOF)
-#define ANTIALIASING true
-
-//Depth of field flag (for DOF to work, antialiasing must be true as well)
-#define DEPTH_OF_FIELD false
-
-//background color (true -> skybox; false -> background_color)
-#define SKYBOX true
-
-#define DEPTH_MAP false
-
-#define PATHTRACING true
-
 #pragma endregion MACROS
 
 
@@ -78,7 +42,7 @@
 uint64_t rayCounter = 0;
 
 //Enable OpenGL drawing.  
-bool drawModeEnabled = false;
+bool drawModeEnabled = true;
 
 //Draw Mode: 0 - point by point; 1 - line by line; 2 - full frame at once
 int draw_mode = 1;
@@ -136,13 +100,13 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 
 	#pragma region ======== GEOMETRY INTERSECTION ========
 
-	if (USING_GRID) {
+	if (acl_str == accel_struct::UGrid) {
 		//Traverse grid one cell at a time
 		if (!grid.Traverse(ray, &min_obj, hit_p)) {
 			min_obj = NULL;
 		}
 	}
-	else if (USING_BVH) {
+	else if (acl_str == accel_struct::Bvh) {
 		if (!bvh.intersect_bvh(ray, &min_obj, hit_p)) {
 			min_obj = NULL;
 		}
@@ -161,7 +125,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 	}
 
 	//Depth map
-	if (!USING_GRID && DEPTH_MAP) {
+	if (acl_str == accel_struct::None && DEPTH_MAP) {
 		
 		//cerr << min_t << "\n";
 
@@ -197,7 +161,7 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 		float fs;
 
 		//fixes floating point errors in intersection
-		Vector interceptNotPrecise = (!USING_GRID && !USING_BVH) ? ray.origin + ray.direction * min_t : hit_p;
+		Vector interceptNotPrecise = (acl_str == accel_struct::None) ? ray.origin + ray.direction * min_t : hit_p;
 		Vector intercept = offsetIntersection(interceptNotPrecise, min_obj->getNormal(interceptNotPrecise));
 
 		norm = min_obj->getNormal(intercept);
@@ -230,12 +194,12 @@ Color rayTracing( Ray ray, int depth, float ior_1, int off_x, int off_y, bool in
 				fs = 1;
 
 				//check for interceptions of feelers
-				if (USING_GRID) {
+				if (acl_str == accel_struct::UGrid) {
 					if (grid.Traverse(feeler)) {
 						fs = 0; //is in shadow
 					}
 				}
-				if (USING_BVH) {
+				if (acl_str == accel_struct::Bvh) {
 					if (bvh.bool_intersect_bvh(feeler)) {
 						fs = 0;
 					}
@@ -357,12 +321,11 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 
 	#pragma region === GEOMETRY INTERSECTION ===
 
-	//FIXME use grid in future
-	if (USING_GRID) {
+	if (acl_str == accel_struct::UGrid) {
 		if (!grid.Traverse(ray, &min_obj, hit_p)) 
 			min_obj == NULL;
 	}
-	else if (USING_BVH) {
+	else if (acl_str == accel_struct::Bvh) {
 		if (!bvh.intersect_bvh(ray, &min_obj, hit_p))
 			min_obj == NULL;
 	}
@@ -391,7 +354,6 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 		return scene->GetBackgroundColor();
 	}
 
-	//cout << "hit" << endl;
 
 	//debug option, for checking intersections
 	if (TEST_INTERSECT)	return Color(1, 0, 0);
@@ -399,7 +361,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 	Vector norm, norml;
 	float fs;
 
-	Vector interceptNotPrecise = (USING_GRID || USING_BVH) ? hit_p : ray.origin + ray.direction * min_t; // FIXME use grid
+	Vector interceptNotPrecise = (acl_str == accel_struct::None) ? ray.origin + ray.direction * min_t : hit_p; 
 
 	norm = min_obj->getNormal(interceptNotPrecise);
 	//properly oriented normal
@@ -485,13 +447,13 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 			float t2 = FLT_MAX;
 			float min_t2 = FLT_MAX;
 
-			if (USING_GRID) {
-				if (!grid.Traverse(ray, &min_obj2, hit_p2)) {
+			if (acl_str == accel_struct::UGrid) {
+				if (!grid.Traverse(feeler, &min_obj2, hit_p2)) {
 					min_obj2 = NULL;
 				}
 			}
-			else if (USING_BVH) {
-				if (!bvh.intersect_bvh(ray, &min_obj2, hit_p2)) {
+			else if (acl_str == accel_struct::Bvh) {
+				if (!bvh.intersect_bvh(feeler, &min_obj2, hit_p2)) {
 					min_obj2 = NULL;
 				}
 			}
@@ -500,7 +462,7 @@ Color Radiance(Ray ray, int depth, float ior_1, int off_x, int off_y, unsigned s
 				for (int j = 0; j < scene->getNumObjects(); j++) {
 					obj2 = scene->getObject(j);
 
-					if (obj2->intercepts(ray, t2) && (t2 < min_t2)) {
+					if (obj2->intercepts(feeler, t2) && (t2 < min_t2)) {
 						min_obj2 = obj2;
 						min_t2 = t2;
 					}
@@ -737,7 +699,7 @@ void renderScene()
 	unsigned int counter = 0;
 
 	// Set up the grid with all objects from the scene
-	if (USING_GRID) {
+	if (acl_str == accel_struct::UGrid) {
 
 		grid = Grid();
 
@@ -748,7 +710,7 @@ void renderScene()
 		grid.Build();
 	}
 
-	if (USING_BVH) {
+	if (acl_str == accel_struct::Bvh) {
 		vector<Object*> objs;
 
 		for (int o = 0; o < scene->getNumObjects(); o++) {
@@ -798,51 +760,39 @@ void renderScene()
 				for (int i = 0; i < SPP; i++) {
 					for (int j = 0; j < SPP; j++) {
 						Ray* ray = nullptr;
-						if (PATHTRACING) {
-							//double r1 = 2 * erand48(seed), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
-							//double r2 = 2 * erand48(seed), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
 
-							//pixel.x = x + (0.5 + dx) / SPP;
-							//pixel.y = y + (0.5 + dy) / SPP;
-
+						if (s_mode == sample_mode::jitter) {
 							pixel.x = x + (i + rand_float()) / SPP;
 							pixel.y = y + (j + rand_float()) / SPP;
+						}
+						else if (s_mode == sample_mode::tent) {
+							double r1 = 2 * erand48(seed), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
+							double r2 = 2 * erand48(seed), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
 
-							if (DEPTH_OF_FIELD) {
+							pixel.x = x + (0.5 + dx) / SPP;
+							pixel.y = y + (0.5 + dy) / SPP;
+						}
 
-								//Sample disk -> alternative to jitering that displaces rays in a circle
-								if (SAMPLE_DISK) lens = sample_unit_disk();
-								else {
-									lens.x = (i + rand_float()) / SPP;
-									lens.y = (j + rand_float()) / SPP;
-								}
-								ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
+						//DOF -> Rays are not shot from the same point but instead from a "lens"
+						if (DEPTH_OF_FIELD) {
+							//Sample disk -> alternative to jitering that displaces rays in a circle
+							if (SAMPLE_DISK) lens = sample_unit_disk();
+							else {
+								lens.x = (i + rand_float()) / SPP;
+								lens.y = (j + rand_float()) / SPP;
 							}
-							else ray = &scene->GetCamera()->PrimaryRay(pixel);
+							ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
+						}
+						else {
+							ray = &scene->GetCamera()->PrimaryRay(pixel);
+						}
 
-							//ray = &scene->GetCamera()->PrimaryRay(pixel);
+						ray->id = ++rayCounter;
 
+						if (PATHTRACING) {
 							color += Radiance(*ray, MAX_DEPTH, 1.0, i, j, seed);
 						}
 						else{
-							pixel.x = x + (i + rand_float()) / SPP;
-							pixel.y = y + (j + rand_float()) / SPP;
-
-							//DOF -> Rays are not shot from the same point but instead from a "lens"
-							if (DEPTH_OF_FIELD) {
-
-								//Sample disk -> alternative to jitering that displaces rays in a circle
-								if (SAMPLE_DISK) lens = sample_unit_disk();
-								else {
-									lens.x = (i + rand_float()) / SPP;
-									lens.y = (j + rand_float()) / SPP;
-								}
-								ray = &scene->GetCamera()->PrimaryRay(lens, pixel);
-							}
-							else ray = &scene->GetCamera()->PrimaryRay(pixel);
-
-							ray->id = ++rayCounter;
-
 							color += rayTracing(*ray, MAX_DEPTH, 1.0, i, j);
 						}
 						
@@ -862,7 +812,7 @@ void renderScene()
 				color += rayTracing(ray, MAX_DEPTH, 1.0, 0, 0);
 			}
 
-			double invGamma = 1 / 2.2; //clara: 0.0 - 1.0  ; escura: 1.8 - 2.2
+			double invGamma = 1 / GAMMA; //clara: 0.0 - 1.0  ; escura: 1.8 - 2.2
 			color = Color(pow(color.r(), invGamma), pow(color.g(), invGamma), pow(color.b(), invGamma));
 
 			//Create Image

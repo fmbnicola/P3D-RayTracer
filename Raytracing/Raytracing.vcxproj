@@ -192,6 +192,7 @@
     <ClInclude Include="camera.h" />
     <ClInclude Include="color.h" />
     <ClInclude Include="grid.h" />
+    <ClInclude Include="constants.h" />
     <ClInclude Include="maths.h" />
     <ClInclude Include="ray.h" />
     <ClInclude Include="sampler.h" />
