@@ -16,6 +16,4 @@ https://vimeo.com/411861765
 https://vimeo.com/424598721
 
 **Created by:**
-Francisco Nicolau 
-Francisco Sousa
-João Martinho
+Francisco Nicolau, Francisco Sousa and João Martinho
